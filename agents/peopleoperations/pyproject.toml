@@ -1,0 +1,15 @@
+[project]
+name = "peopleoperations-agent"
+version = "0.1.0"
+description = "PeopleOperations Agent (HR) — A2A listener agent, LangGraph + real Anthropic backing, JSON-RPC binding"
+requires-python = ">=3.12"
+dependencies = [
+    "langchain-anthropic>=0.3.0",
+    "langgraph>=0.3.18",
+    "a2a-sdk",
+    "uvicorn",
+    "sse-starlette",
+]
+
+[tool.uv]
+package = false
