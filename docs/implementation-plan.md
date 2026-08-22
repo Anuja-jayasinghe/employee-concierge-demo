@@ -54,21 +54,23 @@ for the key to actually run, rather than being faked in the meantime.
 ### Phase 1 — Parking Agent (build first: simplest, zero LLM dependency)
 Python · no framework · a2a-python SDK · REST binding
 
-- [ ] `AgentExecutor` serving a static agent card (skills: spot lookup, reservation)
-- [ ] Mock spot data (a small fixed set, WSO2-office-flavored naming)
-- [ ] `sendMessage` — "is spot X free" answered directly
-- [ ] Task lifecycle: reservation as a task, `cancelTask` support
-- [ ] Push notification config CRUD (create + delete; this is the agent's proof of
+- [x] `AgentExecutor` serving a static agent card (skills: spot lookup, reservation)
+- [x] Mock spot data (a small fixed set, WSO2-office-flavored naming)
+- [x] `sendMessage` — "is spot X free" answered directly
+- [x] Task lifecycle: reservation as a task, `cancelTask` support
+- [x] Push notification config CRUD (create + delete; this is the agent's proof of
       `createTaskPushNotificationConfig`/`deleteTaskPushNotificationConfig`)
 
 **Test — fully real, no stubs needed:**
-- [ ] Agent card resolves correctly at `/.well-known/agent-card.json`
-- [ ] `ballerina/a2a` `RestClient` (or `Client`) against it: `sendMessage`, `cancelTask`,
-      push-notification CRUD all succeed
-- [ ] Negative case: reserving an already-taken spot fails gracefully with a typed error
+- [x] Agent card resolves correctly at `/.well-known/agent-card.json`
+- [x] `ballerina/a2a` `RestClient` (via `Client`) against it: `sendMessage`, `cancelTask`,
+      push-notification CRUD all succeed — see `verification/parking`, 6/6 passing
+- [x] Negative case: reserving an already-taken spot fails gracefully with a typed error
+      (also covered: canceling an already-terminal task correctly fails)
 
 **Done when:** every operation in Parking's "Proves" list in `architecture.md` passes
-against a real `ballerina/a2a` client call, committed with its own README.
+against a real `ballerina/a2a` client call, committed with its own README. **Complete** —
+see `agents/parking/` and `verification/parking/`.
 
 ### Phase 2 — DigiOps Agent (IT Helpdesk)
 Python · Google ADK · a2a-python SDK · JSON-RPC binding · real Anthropic backing
