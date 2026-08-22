@@ -1,0 +1,16 @@
+[package]
+org = "employee_concierge"
+name = "verify_parking"
+version = "0.1.0"
+distribution = "2201.13.5"
+
+[[dependency]]
+org = "ballerina"
+name = "a2a"
+version = "0.2.1"
+repository = "local"
+
+[[dependency]]
+org = "ballerina"
+name = "http"
+version = "2.14.13"
