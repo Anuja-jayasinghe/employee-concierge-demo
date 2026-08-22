@@ -1,8 +1,13 @@
+import httpx
 import uvicorn
 
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.routes import create_agent_card_routes, create_rest_routes
-from a2a.server.tasks import InMemoryTaskStore
+from a2a.server.tasks import (
+    BasePushNotificationSender,
+    InMemoryPushNotificationConfigStore,
+    InMemoryTaskStore,
+)
 from a2a.types import (
     AgentCapabilities,
     AgentCard,
@@ -23,21 +28,21 @@ if __name__ == '__main__':
             name='Check parking availability',
             description='Look up whether a given office parking spot is currently free.',
             tags=['parking'],
-            examples=['is spot A12 free today?'],
+            examples=['is spot A01 free today?'],
         ),
         AgentSkill(
             id='reserve-spot',
             name='Reserve a parking spot',
             description='Reserve a specific office parking spot.',
             tags=['parking'],
-            examples=['reserve spot A12 for tomorrow'],
+            examples=['reserve spot A01'],
         ),
         AgentSkill(
             id='cancel-reservation',
             name='Cancel a reservation',
             description='Cancel an in-progress parking reservation.',
             tags=['parking'],
-            examples=['cancel my reservation for spot A12'],
+            examples=['cancel my reservation for spot A01'],
         ),
     ]
 
@@ -62,10 +67,17 @@ if __name__ == '__main__':
         skills=skills,
     )
 
+    push_config_store = InMemoryPushNotificationConfigStore()
+    push_sender = BasePushNotificationSender(
+        httpx_client=httpx.AsyncClient(), config_store=push_config_store
+    )
+
     request_handler = DefaultRequestHandler(
         agent_executor=ParkingAgentExecutor(),
         task_store=InMemoryTaskStore(),
         agent_card=agent_card,
+        push_config_store=push_config_store,
+        push_sender=push_sender,
     )
 
     routes = []
