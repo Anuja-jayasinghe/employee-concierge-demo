@@ -1,2 +1,18 @@
 # Local guidance for Claude Code, not part of tracked content.
 CLAUDE.md
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Java / Maven / Gradle
+target/
+.gradle/
+build/
+
+# Ballerina
+.ballerina/
+
+# macOS
+.DS_Store
