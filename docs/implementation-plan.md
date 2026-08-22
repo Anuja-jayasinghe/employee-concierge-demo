@@ -75,20 +75,22 @@ see `agents/parking/` and `verification/parking/`.
 ### Phase 2 — DigiOps Agent (IT Helpdesk)
 Python · Google ADK · a2a-python SDK · JSON-RPC binding · real Anthropic backing
 
-- [ ] `AgentExecutor` wrapping a real ADK agent, configured against the real
+- [x] `AgentExecutor` wrapping a real ADK agent, configured against the real
       Anthropic model from the start — no interim fake implementation
-- [ ] `sendMessage` — FAQ answers (VPN, password reset)
-- [ ] Task lifecycle: hardware/ticket request (`getTask`/`cancelTask`/`listTasks`)
-- [ ] `sendStreamingMessage` + `subscribeToTask` — live incident investigation,
-      genuinely droppable and resumable (test by killing the client connection
-      mid-stream and resubscribing, not just letting one stream run uninterrupted)
+- [x] `sendMessage` — FAQ answers (VPN, password reset)
+- [x] Task lifecycle: hardware/ticket request (`getTask`/`cancelTask`/`listTasks`)
+- [x] `sendStreamingMessage` + `subscribeToTask` — live incident investigation,
+      genuinely droppable and resumable (verified with a real deliberate
+      mid-stream disconnect + resubscribe, not just one uninterrupted stream)
 
 **Test:**
-- [ ] Buildable and code-complete now; agent-card resolution is checkable without
-      the key (static data, no LLM call)
-- [ ] **Full functional testing — task lifecycle, streaming, `ballerina/a2a` coverage
-      of every op in DigiOps's "Proves" list — happens in Phase 9**, since invoking
-      this agent's actual message handling means invoking the real model
+- [x] Buildable and code-complete; agent-card resolution and streaming mechanics
+      (real events, real disconnect+resubscribe) verified with no key needed —
+      see `verification/digiops`, structural checks passing
+- [x] Confirmed the whole ADK -> A2A -> `ballerina/a2a` pipeline fails gracefully
+      (typed error, no crash/hang) without a real key
+- [ ] **Full functional content — actual FAQ answers, ticket handling, real
+      diagnosis text — happens in Phase 9**, since that needs the real model
 
 ### Phase 3 — PeopleOperations Agent (HR)
 Python · LangGraph · a2a-python SDK · JSON-RPC binding · real Anthropic backing
