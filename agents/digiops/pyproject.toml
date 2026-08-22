@@ -1,0 +1,13 @@
+[project]
+name = "digiops-agent"
+version = "0.1.0"
+description = "DigiOps Agent (IT Helpdesk) — A2A listener agent, Google ADK + real Anthropic backing, JSON-RPC binding"
+requires-python = ">=3.12"
+dependencies = [
+    "google-adk[a2a]>=1.25.1",
+    "anthropic",
+    "sse-starlette",
+]
+
+[tool.uv]
+package = false
