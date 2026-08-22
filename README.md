@@ -6,6 +6,7 @@ each in a different language/framework, exercising every operation and
 transport binding the client supports.
 
 - [Architecture](docs/architecture.md) — the approved proposal, in full.
-- Implementation plan — coming next.
+- [Implementation plan](docs/implementation-plan.md) — phased build plan, review this.
+- [Naming](NAMING.md) — generic names vs. confirmed WSO2 internal names.
 
-Status: planning.
+Status: implementation plan drafted, awaiting review.
