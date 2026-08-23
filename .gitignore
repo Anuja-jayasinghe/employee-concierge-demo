@@ -13,7 +13,13 @@ build/
 
 # Ballerina
 .ballerina/
-**/Dependencies.toml
+verification/*/Dependencies.toml
+# orchestrator/Dependencies.toml is NOT ignored: combining ballerina/ai
+# with ballerina/a2a's gRPC binding hits a real upstream grpc/http-native
+# ABI-coupling issue (ballerina-platform/ballerina-library#2496) unless
+# the resolved graph is pinned and committed — same pattern a2a-ballerina
+# itself uses for its own Ballerina.toml/Dependencies.toml. Always build
+# and run this package with --sticky.
 
 # macOS
 .DS_Store
