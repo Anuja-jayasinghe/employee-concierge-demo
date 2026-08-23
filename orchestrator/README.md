@@ -61,12 +61,21 @@ gracefully with a typed error — verified, see below.
   chatted with directly (`{"sessionId": "...", "message": "..."}` in,
   `{"message": "..."}` out) and, per below, driven from WSO2 Integrator:
   BI's chat panel.
-- **Five tool functions (`agent_tools.bal`)** — `askParkingAgent`,
-  `askDigiOpsAgent`, `askPeopleOperationsAgent`, `askPayrollAgent`,
-  `askTravelExpenseAgent`. Each holds its own reusable `ballerina/a2a`
-  `Client`, resolved against the real target's Agent Card once at module
-  init — real client, real card, real target agent, no bypass. Directly
-  callable and independently testable without the AI layer at all.
+- **Twenty tool functions (`agent_tools.bal`)**, four per agent (Parking,
+  DigiOps, PeopleOperations, Payroll, Travel & Expense): `askXAgent` for a
+  new request, `cancelXTask`/`getXTaskStatus`/`listXTasks` for a real
+  cancelTask/getTask/listTasks call against an existing one. Each agent
+  holds its own reusable `ballerina/a2a` `Client`, resolved against the
+  real target's Agent Card once at module init — real client, real card,
+  real target agent, no bypass. `askXAgent` replies now include the real
+  task id (e.g. "(task id: abc-123)") when the result is a `Task`, so
+  `concierge`'s own conversation memory lets it call the matching
+  cancel/status tool on a later turn without the employee repeating the
+  id. Push-notification config CRUD is deliberately not exposed as a chat
+  tool — it doesn't map to a synchronous request/reply turn, and support
+  for it is asymmetric across the five agents anyway. All twenty are
+  directly callable and independently testable without the AI layer at
+  all.
 
 - **`POST /webhooks/push`** — accepts a real push-notification delivery
   from any agent's `PushNotificationSender`. Handles both wire shapes
