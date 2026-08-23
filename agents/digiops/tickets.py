@@ -10,15 +10,16 @@ import uuid
 _TICKETS: dict[str, dict] = {}
 
 
-def create_ticket(item: str) -> dict:
+def create_ticket(item: str, raised_by: str) -> dict:
     """Opens a hardware provisioning ticket.
 
     Args:
         item: A short description of the requested hardware, e.g. "laptop charger".
+        raised_by: The real name of the employee raising the ticket.
     """
     ticket_id = str(uuid.uuid4())[:8]
-    _TICKETS[ticket_id] = {'item': item, 'status': 'open'}
-    return {'ticket_id': ticket_id, 'item': item, 'status': 'open'}
+    _TICKETS[ticket_id] = {'item': item, 'status': 'open', 'raised_by': raised_by}
+    return {'ticket_id': ticket_id, 'item': item, 'status': 'open', 'raised_by': raised_by}
 
 
 def get_ticket(ticket_id: str) -> dict:
