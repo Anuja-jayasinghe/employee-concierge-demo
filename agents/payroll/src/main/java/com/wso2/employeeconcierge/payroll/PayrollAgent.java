@@ -24,9 +24,12 @@ public interface PayrollAgent {
         being published.
 
       When an employee reports something wrong with their payslip (wrong
-      deduction, missing allowance, incorrect tax bracket, etc.), call the
-      fileCorrectionRequest tool with their name and a description of the
-      issue, then tell them the correction request ID it returns.
+      deduction, missing allowance, incorrect tax bracket, etc.), every real
+      correction request is tied to a real employee -- if they have not told
+      you their name yet, ask for it before calling fileCorrectionRequest;
+      do not invent or assume one. Once you have both their name and a
+      description of the issue, call fileCorrectionRequest with both, then
+      tell them the correction request ID it returns.
 
       When an employee asks about the status of a previously filed request,
       call getCorrectionStatus with the ID they give you.
