@@ -13,6 +13,7 @@ build/
 
 # Ballerina
 .ballerina/
+verification/*/Dependencies.toml
 
 # macOS
 .DS_Store
