@@ -27,6 +27,16 @@ public final class PayrollAgentCardProducer {
   @ConfigProperty(name = "quarkus.grpc.server.port")
   private int grpcPort;
 
+  // What the agent card tells other clients to connect to — "localhost"
+  // for local-process use, overridden to the Docker Compose service name
+  // (e.g. "payroll") in containerized deployment, since the server bind
+  // address (quarkus.http.host / quarkus.grpc.server.host, separately
+  // set to 0.0.0.0 there) isn't a valid address for another container to
+  // dial back into.
+  @Inject
+  @ConfigProperty(name = "a2a.advertised-host", defaultValue = "localhost")
+  private String advertisedHost;
+
   private static final List<AgentSkill> PUBLIC_SKILLS = List.of(
       AgentSkill.builder()
           .id("payslip-correction")
@@ -85,6 +95,6 @@ public final class PayrollAgentCardProducer {
         .defaultInputModes(List.of("text"))
         .defaultOutputModes(List.of("text"))
         .supportedInterfaces(
-            List.of(new AgentInterface(TransportProtocol.GRPC.asString(), "localhost:" + grpcPort)));
+            List.of(new AgentInterface(TransportProtocol.GRPC.asString(), advertisedHost + ":" + grpcPort)));
   }
 }
