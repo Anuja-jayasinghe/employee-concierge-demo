@@ -199,15 +199,32 @@ lands, rather than asserting something the SDK doesn't actually guarantee.
 ### Phase 7 — Orchestrator
 Ballerina · `ballerina/ai` · `ballerina/a2a` client · real Anthropic backing
 
-- [ ] Five tool functions, each resolving its target agent's card once and holding a
+- [x] Five tool functions, each resolving its target agent's card once and holding a
       reusable `ballerina/a2a` `Client`
-- [ ] Each tool function is code-complete and calls its real target agent via real
+- [x] Each tool function is code-complete and calls its real target agent via real
       `ballerina/a2a` — no bypass. Against Parking specifically (the one agent that
-      doesn't need the key to run), this is fully testable now
-- [ ] Wire the five tools into a real `ballerina/ai` `Agent` (routing decision layer)
-      on the real Anthropic model — code-complete now, but actually invoking it means
-      invoking the real model, so full routing verification happens in Phase 9
-- [ ] Push-notification webhook receiver wired in (Phase 6)
+      doesn't need the key to run), this is fully testable now — real `bal test`
+      confirms a real content reply
+- [x] Wire the five tools into a real `ballerina/ai` `Agent` (routing decision layer)
+      on the real Anthropic model (`ballerinax/ai.anthropic`, claude-sonnet-4-5) —
+      code-complete now, but actually invoking it means invoking the real model, so
+      full routing verification happens in Phase 9. Confirmed now: the whole
+      `ballerina/ai -> ballerinax/ai.anthropic -> Anthropic API` pipeline fails
+      gracefully without a real key
+- [x] Push-notification webhook receiver wired in (Phase 6) — same `orchestrator/` package
+
+**Test:** no separate `verification/orchestrator` package — the tools and the agent
+are internal logic, not a new server-side protocol surface, so `bal test`
+(`orchestrator/tests/`) is the real (not mocked) tool for this. All 6 checks pass
+against all five real running downstream agents — see `orchestrator/README.md`.
+
+**Real, upstream-known issue found and fixed for real:** combining `ballerina/ai`
+with `ballerina/a2a`'s gRPC binding in one package hits a grpc/http-native
+ABI-coupling bug (ballerina-platform/ballerina-library#2496) — a fresh dependency
+resolve picks an `http` version newer than what the bundled `grpc` module tolerates,
+crashing at boot. Fixed the same way `ballerina/a2a`'s own `Ballerina.toml` already
+documents: pin `http` as a floor and commit the resolved `Dependencies.toml` as the
+real source of truth, always building/running this package with `--sticky`.
 
 ### Phase 8 — Local process bring-up (structural check, ahead of the key)
 - [ ] All five agents + orchestrator started as local processes on fixed ports
