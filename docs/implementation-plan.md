@@ -227,17 +227,32 @@ documents: pin `http` as a floor and commit the resolved `Dependencies.toml` as 
 real source of truth, always building/running this package with `--sticky`.
 
 ### Phase 8 — Local process bring-up (structural check, ahead of the key)
-- [ ] All five agents + orchestrator started as local processes on fixed ports
-      (matching this project's existing reference-agent pattern)
-- [ ] Confirm every agent serves its agent card correctly and the orchestrator can
-      resolve all five
-- [ ] Run whatever slice of the smoke test doesn't require the key: Parking's full
+- [x] All five agents + orchestrator started as local processes on fixed ports
+      (`scripts/start-all.sh`, builds from source first if needed, waits for every
+      real Agent Card to resolve)
+- [x] Confirm every agent serves its agent card correctly and the orchestrator can
+      resolve all five — module init itself fails the whole orchestrator boot if any
+      of the five isn't reachable, so this is enforced structurally, not just tested
+- [x] Run whatever slice of the smoke test doesn't require the key: Parking's full
       operation set, plus agent-card and push-notification-config checks on the
-      other four
-- [ ] This is a structural readiness check, not the real functional pass — that's Phase 9
+      other four (`scripts/run-structural-checks.sh`, running every existing
+      verification script plus `orchestrator`'s own `bal test` suite)
+- [x] This is a structural readiness check, not the real functional pass — that's Phase 9
 
 **Done when:** the whole system is running, every agent is reachable and serving a
-correct card, and everything that *can* be verified without the key has been.
+correct card, and everything that *can* be verified without the key has been. ✅ A
+genuinely fresh `stop-all.sh` → `start-all.sh` → `run-structural-checks.sh` cycle
+passes every check except the already-documented Payroll/Travel & Expense
+push-notification race from Phase 6 (real, expected non-determinism — see
+`orchestrator/README.md` — not a Phase 8 regression).
+
+**Real bug found and fixed while writing `start-all.sh`:** backgrounding
+`cd x && cmd &` runs `cmd` inside an extra subshell, so `$!` is that subshell's PID,
+not `cmd`'s — `stop-all.sh` was killing the wrong process and leaving the real one
+running. Fixed by `exec`ing the real command inside an explicitly backgrounded
+subshell. `bal run <jar>` has the same problem one layer further in (forks its own
+JVM rather than exec'ing into it), so the orchestrator's tracked PID is recovered
+from its listening port instead.
 
 ### Phase 9 — Full functional pass with the real key
 Only once the Anthropic key is supplied. This is where DigiOps, PeopleOperations,
