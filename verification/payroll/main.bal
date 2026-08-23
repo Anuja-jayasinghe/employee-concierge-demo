@@ -55,8 +55,11 @@ public function main() returns error? {
                 taskId = token;
             }
         }
+    } else if sendResult is a2a:Task {
+        io:println("[ok] sendMessage succeeded with a real key — real task id: ", sendResult.id);
+        taskId = sendResult.id;
     } else {
-        io:println("[ok, unexpected] sendMessage succeeded — a real key must already be configured");
+        io:println("[FAIL] sendMessage returned a bare Message — expected a Task either way");
     }
     if taskId is () {
         io:println("[FAIL] could not recover a real task ID to drive the remaining checks");
