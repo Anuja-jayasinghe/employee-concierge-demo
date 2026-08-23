@@ -73,3 +73,48 @@ Ballerina distribution, not a separate runtime or format. See
 [`remote-agent-integration-patterns.md`](remote-agent-integration-patterns.md)
 for the follow-up question this raised — how BI expects a remote A2A
 agent to be wired into an agent it builds.
+
+## Follow-up: opening it in BI showed the webhook receiver, not a chat agent
+
+The compatibility conclusion above only says BI activates on the
+package — it doesn't say what BI's Design canvas actually *shows*. Real
+test: opened `orchestrator/` in the BI Visualizer. The canvas rendered
+`webhook_receiver.bal`'s plain `http:Listener` (`POST /webhooks/push`,
+`GET /webhooks/received`) as the entry point, and the five
+`agent_tools.bal` `a2a:Client`s as generic, unlabeled **Connection**
+nodes — no "AI Agent Service" node, no chat panel, nothing to test
+`concierge` against.
+
+**Root cause, confirmed by reading the actual code**:
+`concierge_agent.bal` declares `final ai:Agent concierge = check new (...)`
+but nothing in the package ever calls `concierge.run(...)` — no
+`ai:Listener`, no `ai:ChatService`. `grep -n "concierge" orchestrator/*.bal`
+turns up exactly one line, the declaration itself. BI has nothing to
+render as a chat agent because there wasn't one — `concierge` was built
+but never actually exposed as a service.
+
+**Confirmed real fix, not a guess**: `ballerina/ai` 1.14.0 (the exact
+version this package depends on — checked its own `Ballerina.toml`) ships
+a real `ai:Listener` class (`modules/ai/listener.bal`) and `ai:ChatService`
+type (`modules/ai/types.bal`, a `chat` resource taking `ChatReqMessage` /
+returning `ChatRespMessage`) for exactly this. Found the exact working
+pattern in a real, already-installed BI-scaffolded project on this
+machine — `~/WSO2Integrator/wso2-integrator-a2a/a2ademoassistant/main.bal`,
+BI's own generated code for an equivalent A2A-delegating chat agent:
+
+```ballerina
+listener ai:Listener chatAgentListener = new (listenOn = check http:getDefaultListener());
+
+service /assistantAgent on chatAgentListener {
+    resource function post chat(@http:Payload ai:ChatReqMessage request) returns ai:ChatRespMessage|error {
+        string stringResult = check assistantAgent.run(request.message, request.sessionId);
+        return {message: stringResult};
+    }
+}
+```
+
+Added the same shape to `orchestrator/chat_service.bal`, wired to
+`concierge` on port 8090 at `/concierge/chat`, and verified with a real
+`bal build --sticky` that it compiles. See `orchestrator/README.md`'s
+"Chatting with it" section for how to use it, from curl or from BI's chat
+panel.

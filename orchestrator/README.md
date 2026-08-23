@@ -16,7 +16,8 @@ stub model. See the
 Ballerina · `ballerina/http` (webhook receiver, port **9090**) ·
 `ballerina/ai` + `ballerinax/ai.anthropic` (routing agent) ·
 `ballerina/a2a` (five real client connections to Parking, DigiOps,
-PeopleOperations, Payroll, and Travel & Expense).
+PeopleOperations, Payroll, and Travel & Expense) · `ai:Listener` (chat
+service, port **8090** — see "Chatting with it" below).
 
 **Must always be built/run with `--sticky`** — see the real
 grpc/http-native ABI-coupling issue noted in `.gitignore` and in the
@@ -48,6 +49,11 @@ gracefully with a typed error — verified, see below.
   tools to call and relays the real target agent's answer back. Full
   routing verification (does it pick the right tool) is Phase 9's job,
   once a real key is supplied.
+- **`POST /concierge/chat` (`chat_service.bal`)** — `concierge` exposed on
+  an `ai:Listener` (port 8090) as a real `ai:ChatService`, so it can be
+  chatted with directly (`{"sessionId": "...", "message": "..."}` in,
+  `{"message": "..."}` out) and, per below, driven from WSO2 Integrator:
+  BI's chat panel.
 - **Five tool functions (`agent_tools.bal`)** — `askParkingAgent`,
   `askDigiOpsAgent`, `askPeopleOperationsAgent`, `askPayrollAgent`,
   `askTravelExpenseAgent`. Each holds its own reusable `ballerina/a2a`
@@ -64,6 +70,26 @@ gracefully with a typed error — verified, see below.
 - **`GET /webhooks/received`** — returns everything received so far, as
   JSON. Real introspection, not a mock — used by
   `verification/webhook_receiver` to assert delivery actually happened.
+
+## Chatting with it
+
+Once running (locally or via BI's Run/Debug), talk to `concierge` directly
+over HTTP:
+
+```sh
+curl -s http://127.0.0.1:8090/concierge/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"sessionId": "demo-1", "message": "is there parking available today?"}'
+```
+
+**In WSO2 Integrator: BI**: open `orchestrator/` in VS Code with the BI
+extension active, select the Design canvas's `AI Agent Service` entry
+point (`chatListener` → `/concierge`), and use its chat panel — BI drives
+the same `POST /concierge/chat` resource under the hood. See
+[`../docs/research/wso2-integrator-bi-compatibility.md`](../docs/research/wso2-integrator-bi-compatibility.md)
+for why this file (`chat_service.bal`) had to be added for BI to render
+`concierge` as a chat agent at all, rather than showing only the webhook
+receiver's plain `http:Listener`.
 
 ## A real finding from building this
 
