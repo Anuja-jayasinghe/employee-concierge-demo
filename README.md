@@ -9,9 +9,14 @@ transport binding the client supports.
 - [Implementation plan](docs/implementation-plan.md) — phased build plan, review this.
 - [Naming](NAMING.md) — generic names vs. confirmed WSO2 internal names.
 
-Status: Phases 1–8 complete (all five agents, the orchestrator, the
-push-notification webhook receiver, and local bring-up). Phase 9 (full
-functional pass with a real Anthropic key) is next.
+Status: Phases 1–13 complete — all five agents, the orchestrator, the
+push-notification webhook receiver, local and Docker Compose bring-up,
+a full functional pass with a real Anthropic key
+([DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)), negative/chaos testing
+([NEGATIVE_TEST_REPORT.md](docs/NEGATIVE_TEST_REPORT.md)), and
+documentation finalization. Payroll, Parking, Travel & Expense, and the
+orchestrator still carry generic names pending WSO2-internal confirmation
+(see [NAMING.md](NAMING.md)) — the only open item.
 
 ## Running the whole system locally
 

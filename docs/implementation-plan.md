@@ -1,7 +1,8 @@
 # Employee Concierge — Implementation Plan
 
-Status: **draft, awaiting review**. See [`architecture.md`](architecture.md) for the
-approved system design this plan implements.
+Status: **all 13 phases complete**. See [`architecture.md`](architecture.md) for the
+approved system design this plan implements, and each phase section below for what
+was actually built and verified.
 
 ## Decisions locked in for this plan
 
@@ -374,8 +375,23 @@ Docker/Kubernetes deployment tooling, independent of what was built here. See
 `README.md`'s "A note on WSO2 Integrator: BI" for the full writeup.
 
 ### Phase 13 — Final polish
-- [ ] Full walkthrough rehearsal against `DEMO_SCRIPT.md`
-- [ ] Anything cosmetic (WSO2 naming still pending, README polish) closed out
+- [x] Full walkthrough rehearsal — fresh `stop-all.sh` -> `start-all.sh` ->
+      `run-structural-checks.sh` cycle, all real, all against the live system.
+      Found and fixed two real bugs along the way (not regressions from Phase 12,
+      but genuine gaps this rehearsal was the first thing to actually exercise):
+      `verification/payroll`/`verification/travel_expense` couldn't recover a task
+      ID from a *successful* `sendMessage` (they were only ever exercised against a
+      no-key system before); `run-structural-checks.sh`'s own orchestrator
+      `bal test` call didn't source `.env`, so its tests assumed no key while the
+      real agents it called into already had one. Clean run afterward, modulo the
+      already-documented Phase 6 push-notification race
+- [x] Cosmetic: `README.md` and this plan's own top-of-doc status lines were both
+      stale ("Phases 1-8" / "draft, awaiting review") despite all 13 phases being
+      done — closed out. `DEMO_SCRIPT.md` updated to mention the Docker path
+      alongside local-process. WSO2 naming: checked again, nothing new to apply —
+      Payroll, Parking, Travel & Expense, and the orchestrator remain the one
+      genuinely open item, tracked in `NAMING.md`, blocked on the user confirming
+      real names
 
 ## Testing philosophy summary
 

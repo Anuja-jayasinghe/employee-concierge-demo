@@ -1,13 +1,34 @@
 #!/usr/bin/env bash
-# Runs every real ballerina/a2a verification script that doesn't need a
-# real Anthropic key — Parking's full operation set, plus agent-card and
-# push-notification-config checks on the other four — against a system
-# already brought up by start-all.sh. Real network calls against real
-# running processes throughout; nothing here is mocked.
+# Runs every real ballerina/a2a verification script — Parking's full
+# operation set, agent-card and push-notification-config checks on the
+# other four, and the orchestrator's own bal test suite — against a
+# system already brought up by start-all.sh. Real network calls against
+# real running processes throughout; nothing here is mocked.
+#
+# Every check here is genuinely correct whether or not .env holds a real
+# ANTHROPIC_API_KEY: with no key, the LLM-backed checks assert graceful
+# failure; with a real key (the default local dev setup since Phase 9),
+# they assert real, non-empty content instead — so this now spends a
+# small, bounded amount of real Anthropic quota per run once a key is
+# configured (a handful of short calls, not something that scales with
+# how often this script is run in a loop).
 set -uo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 unset JAVA_HOME
+
+# Source .env the same way start-all.sh does, so this script's own
+# orchestrator `bal test` step sees the same ANTHROPIC_API_KEY the
+# already-running agents booted with — otherwise the orchestrator's tests
+# assume no key (and expect a graceful error) while the real agents
+# they're calling already have one and answer for real, a false failure
+# found for real while rehearsing the whole system in Phase 13.
+if [ -f "$ROOT_DIR/.env" ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$ROOT_DIR/.env"
+    set +a
+fi
 
 failures=0
 run_check() {
