@@ -9,4 +9,4 @@ confirm by real evidence, never assume.
 | Doc | Question | Outcome |
 |---|---|---|
 | [`remote-agent-integration-patterns.md`](remote-agent-integration-patterns.md) | How do real frameworks wire a remote/A2A agent into an orchestrator — system-prompt text, or tools? | Tools, universally. Confirmed our existing `orchestrator/agent_tools.bal` already matches — no redesign needed |
-| [`wso2-integrator-bi-compatibility.md`](wso2-integrator-bi-compatibility.md) | Is `orchestrator/` (a plain `bal`-CLI Ballerina package) compatible with WSO2 Integrator: BI, the platform this will actually be demoed through? | Yes, confirmed for real — BI is a VS Code extension on the standard Ballerina distribution, not a separate runtime or format |
+| [`wso2-integrator-bi-compatibility.md`](wso2-integrator-bi-compatibility.md) | Is `orchestrator/` (a plain `bal`-CLI Ballerina package) compatible with WSO2 Integrator: BI, the platform this will actually be demoed through? | Yes — but BI only renders a chat-testable "AI Agent Service" for an `ai:Listener`/`ai:ChatService`, which `concierge` didn't have; added `chat_service.bal` to fix it |

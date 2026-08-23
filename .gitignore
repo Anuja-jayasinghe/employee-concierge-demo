@@ -24,6 +24,15 @@ verification/*/Dependencies.toml
 # itself uses for its own Ballerina.toml/Dependencies.toml. Always build
 # and run this package with --sticky.
 
+# WSO2 Integrator: BI writes these into a package on first Run/Debug —
+# per BI's own generated .gitignore, "This should not be committed to
+# version control": Config.toml can carry dev-time secrets, and
+# trace_enabled.bal just toggles local tracing. .vscode/ is BI's launch
+# config for the same, equally local to whoever's debugging.
+Config.toml
+trace_enabled.bal
+.vscode/
+
 # macOS
 .DS_Store
 

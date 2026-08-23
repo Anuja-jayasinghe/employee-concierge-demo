@@ -16,7 +16,8 @@ stub model. See the
 Ballerina · `ballerina/http` (webhook receiver, port **9090**) ·
 `ballerina/ai` + `ballerinax/ai.anthropic` (routing agent) ·
 `ballerina/a2a` (five real client connections to Parking, DigiOps,
-PeopleOperations, Payroll, and Travel & Expense).
+PeopleOperations, Payroll, and Travel & Expense) · `ai:Listener` (chat
+service, port **8090** — see "Chatting with it" below).
 
 **Must always be built/run with `--sticky`** — see the real
 grpc/http-native ABI-coupling issue noted in `.gitignore` and in the
@@ -27,15 +28,22 @@ package specifically because of it.
 
 All five downstream agents must be reachable first — module init resolves
 all five real Agent Cards at startup, so the orchestrator fails to boot
-if any one of them isn't up (see `agent_tools.bal`):
+if any one of them isn't up (see `agent_tools.bal`), **no matter what
+starts the orchestrator** — a bare `bal run`, `scripts/start-all.sh`, or
+BI's own Run/Debug button all hit the same requirement:
 
 ```sh
-# start Parking, DigiOps, PeopleOperations, Payroll, and Travel & Expense
-# first (see each agent's own README), then:
-cd orchestrator
-export ANTHROPIC_API_KEY=...   # required for real routing / real answers
+../scripts/start-agents.sh      # brings up all five, then stops (no orchestrator)
+export ANTHROPIC_API_KEY=...    # required for real routing / real answers
 bal run --sticky
 ```
+
+Running through WSO2 Integrator: BI instead of `bal run --sticky`? Same
+prerequisite — run `scripts/start-agents.sh` from a terminal first, *then*
+use BI's Run/Debug or chat panel on `orchestrator/`. Skipping that step is
+exactly what produces BI's `error: Something wrong with the connection` —
+it isn't a BI-compatibility issue, it's this same reachability requirement
+surfacing through a different launcher.
 
 Without `ANTHROPIC_API_KEY`, the orchestrator still boots and holds all
 five real downstream connections, but any real routing request fails
@@ -48,6 +56,11 @@ gracefully with a typed error — verified, see below.
   tools to call and relays the real target agent's answer back. Full
   routing verification (does it pick the right tool) is Phase 9's job,
   once a real key is supplied.
+- **`POST /concierge/chat` (`chat_service.bal`)** — `concierge` exposed on
+  an `ai:Listener` (port 8090) as a real `ai:ChatService`, so it can be
+  chatted with directly (`{"sessionId": "...", "message": "..."}` in,
+  `{"message": "..."}` out) and, per below, driven from WSO2 Integrator:
+  BI's chat panel.
 - **Five tool functions (`agent_tools.bal`)** — `askParkingAgent`,
   `askDigiOpsAgent`, `askPeopleOperationsAgent`, `askPayrollAgent`,
   `askTravelExpenseAgent`. Each holds its own reusable `ballerina/a2a`
@@ -64,6 +77,28 @@ gracefully with a typed error — verified, see below.
 - **`GET /webhooks/received`** — returns everything received so far, as
   JSON. Real introspection, not a mock — used by
   `verification/webhook_receiver` to assert delivery actually happened.
+
+## Chatting with it
+
+Once running (locally or via BI's Run/Debug), talk to `concierge` directly
+over HTTP:
+
+```sh
+curl -s http://127.0.0.1:8090/concierge/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"sessionId": "demo-1", "message": "is there parking available today?"}'
+```
+
+**In WSO2 Integrator: BI**: run `../scripts/start-agents.sh` first (see
+"Run it" above — BI's Run button doesn't start the five downstream
+agents for you), then open `orchestrator/` in BI, select the Design
+canvas's `AI Agent Service` entry point (`chatListener` → `/concierge`),
+and use its chat panel — BI drives the same `POST /concierge/chat`
+resource under the hood. See
+[`../docs/research/wso2-integrator-bi-compatibility.md`](../docs/research/wso2-integrator-bi-compatibility.md)
+for why this file (`chat_service.bal`) had to be added for BI to render
+`concierge` as a chat agent at all, rather than showing only the webhook
+receiver's plain `http:Listener`.
 
 ## A real finding from building this
 
