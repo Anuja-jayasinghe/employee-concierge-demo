@@ -6,23 +6,41 @@ testing the chat.
 
 ## What changed
 
+Every write action (reserving parking, raising a ticket, filing a
+correction or claim) now asks for the employee's real name if it
+doesn't already have one, and remembers it for the rest of the
+conversation. Once given, that name is really stored and really
+answerable back — "who reserved spot A02?", "who raised that ticket?"
+now get real answers instead of a privacy refusal.
+
 The chat used to only be able to send a message and get a reply — no
-cancelling, no checking status, no listing. That's fixed: every agent
-now has real cancel/status/list tools wired into the chat, on top of
-the original ask tool. When a request creates something (a
-reservation, a ticket, a claim), the reply includes a real task id;
-mention it back later ("cancel that", "check on it") and the chat will
-recall it from the conversation and act on the real thing, not a
-guess.
+cancelling, no checking status, no listing. That's fixed too: every
+agent now has real cancel/status/list tools wired into the chat, on
+top of the original ask tool. When a request creates something, the
+reply includes a real task id; mention it back later ("cancel that",
+"check on it") and the chat will recall it and act on the real thing.
 
 One real limit worth knowing: "list" shows *every* task that agent has
 ever seen, not filtered to just you — there's no login/identity
-concept here. In a single-person demo that's effectively the same
-thing, but it's not really "yours," it's "everyone's."
+concept, just whatever name was given per request. In a single-person
+demo that's effectively fine, but it's "everyone's," not "yours."
 
 Also still true: push notifications ("let me know when it's approved")
-aren't a chat capability — that needs a webhook target of your own, not
-something a chat reply can set up for you.
+aren't a chat capability — that needs a webhook target of your own.
+
+## A real, disclosed reliability quirk
+
+The chat occasionally re-calls an agent's tool several times for one
+simple question, even when the first call already had a clear answer —
+confirmed non-deterministic (the exact same question can resolve
+cleanly in ~5 seconds on one try and take much longer, or fail
+outright, on another, with nothing else different). This is a real
+characteristic of the underlying LLM tool-calling loop, not a bug in
+this project's own code — reproduced it down to a single tool and a
+one-sentence prompt and it still happens sometimes. There's a bounded
+retry cap in place so a bad run fails fast with a clear error instead
+of hanging indefinitely; if a question fails this way, just ask it
+again.
 
 ---
 
@@ -32,8 +50,9 @@ Spot availability and reservations at WSO2 Colombo HQ.
 ✅ Ask:
 - "is anything free?" / "is there any parking available?"
 - "is spot A01 free?"
-- "reserve spot A01"
-- "reserve me a spot on level 2" (it'll ask which exact spot)
+- "reserve spot A01" (it'll ask your name first, if it doesn't have it)
+- "reserve me a spot on level 2" (it'll ask which exact spot too)
+- "who reserved spot A02?"
 - "cancel that" (right after a reservation, in the same conversation)
 - "what have I reserved so far?" (lists every reservation attempt, not just yours)
 
@@ -48,7 +67,8 @@ VPN, password resets, hardware requests, and IT incidents.
 
 ✅ Ask:
 - "how do I reset my VPN password?"
-- "I need a new laptop charger" (opens a real ticket, gives you an ID)
+- "I need a new laptop charger" (asks your name, then opens a real ticket with an ID)
+- "who raised ticket X?"
 - "what's the status of that ticket?" (recalls the id from the conversation)
 - "cancel that ticket"
 - "my laptop can't reach the internal network" (investigates, gives a diagnosis)
@@ -65,7 +85,7 @@ Leave policy, benefits, and new-hire onboarding.
 ✅ Ask:
 - "how many annual leave days do I have?"
 - "what benefits am I eligible for?"
-- "onboard Jane Doe as a new hire" (runs a real multi-step provisioning flow)
+- "onboard Jane Doe as a new hire" (already required a name before this change — runs a real multi-step provisioning flow)
 - "what's the status of that onboarding?" / "cancel it"
 - "what onboardings have been run?"
 
@@ -80,7 +100,7 @@ Payslip questions and corrections.
 
 ✅ Ask:
 - "when is the next pay date?"
-- "my payslip has the wrong amount" (files a real correction request, gives an ID)
+- "my payslip has the wrong amount" (asks your name, then files a real correction request with an ID)
 - "what's the status of my correction?" / "cancel it"
 - "what corrections have been filed?"
 
@@ -95,7 +115,7 @@ Travel policy questions and expense claims.
 
 ✅ Ask:
 - "what's the per-diem rate?"
-- "I spent $50 on a taxi for a client meeting" (files a real claim, gives an ID)
+- "I spent $50 on a taxi for a client meeting" (asks your name, then files a real claim with an ID)
 - "what's the status of my claim?" / "cancel it"
 - "what claims have been filed?"
 
@@ -107,6 +127,7 @@ Travel policy questions and expense claims.
 
 ## One more thing
 
-All the data behind these agents (spots, tickets, payslips, claims) is
-fake and lives in memory — it resets every time an agent restarts. This
-is a demo, not a connection to any real WSO2 system.
+All the data behind these agents (spots, tickets, payslips, claims,
+and now names) is fake and lives in memory — it resets every time an
+agent restarts. This is a demo, not a connection to any real WSO2
+system.
