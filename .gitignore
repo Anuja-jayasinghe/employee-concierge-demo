@@ -30,3 +30,9 @@ verification/*/Dependencies.toml
 # scripts/start-all.sh runtime state
 /logs/
 /.pids/
+
+# Docker build staging — populated fresh from the local Ballerina
+# repository by orchestrator/prepare-docker-build.sh before each image
+# build, never committed (it's a copy of a2a-ballerina's own build
+# output, not this repo's).
+orchestrator/.docker-local-repo/
