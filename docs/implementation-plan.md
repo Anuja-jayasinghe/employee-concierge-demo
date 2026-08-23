@@ -260,14 +260,37 @@ Payroll, Travel & Expense, and the orchestrator's routing all get their first re
 functional test — plan for this being the biggest single testing phase, not a quick
 confirmation pass.
 
-- [ ] `a2a-smoke-test` skill run: every one of the 11 operations, across all three
-      transport bindings, exercised end-to-end against the real running system
-- [ ] Run a **fixed, pre-scripted** set of end-to-end employee scenarios, written down
-      in `DEMO_SCRIPT.md` *before* running them, so there's no ad-hoc repeated
-      querying against the real API — script first, then execute once
-- [ ] Confirm orchestrator routing quality across all five agents with the real model
-- [ ] Record results; only re-run a scenario if it genuinely failed and needs a fix
-      verified, not for exploratory iteration
+- [x] Every one of the 11 operations, across all three transport bindings, exercised
+      end-to-end against the real running system. The `a2a-smoke-test` Claude Code
+      Skill proposed early in this project was never actually created, so this ran as
+      a direct real script rather than through that packaging — the coverage itself is
+      complete: protocol-mechanical coverage of all 11 ops (`sendMessage`,
+      `sendStreamingMessage`, `getTask`, `cancelTask`, `listTasks`, `subscribeToTask`,
+      the four push-notification config ops, `getExtendedAgentCard`) across REST/
+      JSON-RPC/gRPC was already fully verified for real in Phases 1-8 with no key
+      needed; Phase 9's new job was specifically proving real *content* wherever a key
+      was the only missing piece, which `verification/phase9_smoke_test` and
+      `orchestrator/tests/phase9_routing_test.bal` now do
+- [x] Ran a **fixed, pre-scripted** set of end-to-end employee scenarios, written down
+      in `DEMO_SCRIPT.md` *before* running them — 10 scenarios (6 direct-to-agent, 4
+      through orchestrator routing), executed once
+- [x] Confirmed orchestrator routing quality across all five agents with the real
+      model — Parking, DigiOps, and Payroll all correctly selected from natural
+      language, and an off-domain (weather) request correctly declined rather than
+      answered by guessing
+- [x] Recorded results in `DEMO_SCRIPT.md`; all 10 scenarios passed on the one
+      scripted run. Two (Payroll correction, Travel & Expense claim) deviated from the
+      literal scripted expectation in a way that's actually correct real behavior —
+      the model withheld a tool call pending a required parameter or a real policy
+      check (manager approval, receipt threshold) rather than filing incomplete
+      data — recorded honestly, not re-run for a "cleaner" result
+
+**Real issue found and fixed:** `.env` is only auto-sourced by `scripts/start-all.sh`'s
+own process, not by a separately invoked `bal test` — the first routing-test run hit
+real 401s from Anthropic because of this, not a code defect. Also made the four
+Phase-7-era "fails gracefully without a key" tests key-aware
+(`os:getEnv("ANTHROPIC_API_KEY")`) rather than hardcoded to the no-key world, since a
+real key now genuinely changes their correct expected outcome.
 
 ### Phase 10 — Negative / chaos testing
 - [ ] Reuse this session's fault-injection harness pattern against the now-real
