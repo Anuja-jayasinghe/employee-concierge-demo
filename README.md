@@ -39,6 +39,13 @@ a2a-java race condition from Phase 6 (see `orchestrator/README.md`), not
 a bug in these scripts; re-run it and it usually passes within a few
 attempts.
 
+Running or chatting with `orchestrator/` through WSO2 Integrator: BI
+instead of `bal run`? Use `./scripts/start-agents.sh` instead of
+`start-all.sh` — it brings up just the five downstream agents (which the
+orchestrator requires to already be reachable, no matter what starts it)
+and leaves the orchestrator itself for BI to run. See
+`orchestrator/README.md`'s "Chatting with it" section.
+
 Each agent and the orchestrator also has its own README with instructions
 to run and verify it individually.
 

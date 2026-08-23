@@ -118,3 +118,68 @@ Added the same shape to `orchestrator/chat_service.bal`, wired to
 `bal build --sticky` that it compiles. See `orchestrator/README.md`'s
 "Chatting with it" section for how to use it, from curl or from BI's chat
 panel.
+
+## Follow-up: "convert the whole repo into an Integrator project"?
+
+After `chat_service.bal` was added, running orchestrator from BI's own
+Run button (the standalone **WSO2 Integrator.app**, not the VS Code
+extension used above) still failed:
+
+```
+Executing task: ".../WSO2 Integrator.app/Contents/components/ballerina/bin/bal" run
+Compiling source
+    employee_concierge/orchestrator:0.1.0
+    warning: Detected conflicting jar files:
+        'ballerina-rt-2201.13.4.jar' dependency of 'employee_concierge/orchestrator'
+        conflict with 'opentelemetry-api-1.32.0.jar' dependency of 'ballerinax/idetraceprovider'
+Running executable
+ballerina: started publishing traces to IdeTraceProvider (OTLP/HTTP) on http://localhost:59500/v1/traces
+error: Something wrong with the connection
+```
+
+This raised the question of whether restructuring the whole repo (all
+five agents plus the orchestrator) into a single Integrator project would
+fix it. Checked both parts of that error for real before answering:
+
+- **The jar-conflict warning is real but harmless, and not BI-specific.**
+  Reproduced it with a completely ordinary `bal build --sticky` from the
+  Homebrew-installed `bal` (2201.13.5, not BI's bundled 2201.13.4) —
+  identical warning, same two packages. Checked why:
+  `orchestrator/Dependencies.toml` already lists `ballerinax/idetraceprovider`
+  (v0.9.0) as one of `employee_concierge/orchestrator`'s own direct,
+  already-locked dependencies, alongside `ballerina/a2a`, `ballerina/ai`,
+  etc. — it's a real resolved package in this build, not something BI's
+  Run button injects on the fly. `opentelemetry-api-1.32.0.jar` (pulled in
+  transitively by `idetraceprovider`) genuinely conflicts with whichever
+  `ballerina-rt-*.jar` is on the runtime classpath, regardless of which
+  `bal` binary runs it. Confirmed harmless either way, since both runs
+  proceed straight past the warning into "Running executable"/"Generating
+  executable" — it never stopped a build.
+- **The actual failure is the same reachability requirement documented
+  above, surfacing through a different launcher.** `agent_tools.bal`
+  resolves all five real downstream Agent Cards (real HTTP calls) at
+  module init; the BI Run button started orchestrator alone, with none of
+  the five agents running, so init failed with exactly the connection
+  error shown. Reproduced this reasoning against `orchestrator/README.md`'s
+  own "Run it" section, written before this session ever touched BI's
+  Run button — the requirement was already documented, just not yet hit
+  through BI specifically.
+
+**Conclusion: no repo conversion, no clash to fix by restructuring.**
+Four of the five downstream agents (Parking, DigiOps, PeopleOperations —
+Python/`a2a-sdk`; Payroll, Travel & Expense — Java/Quarkus/`a2a-java`)
+are not Ballerina packages at all — there is no "Integrator project" form
+that runs a Python or a JVM process, so folding them into one BI project
+alongside `orchestrator/` isn't something the tooling supports, and doing
+it would mean replacing them with something that isn't a real running
+agent — directly against the
+["everything real, nothing simulated"](../../CLAUDE.md) rule. Opening the
+repo **root** in BI already works today — BI's own
+`workspaceContains:**/Ballerina.toml` activation (confirmed above) finds
+`orchestrator/Ballerina.toml` regardless of nesting, and the Run-button
+log itself proves it: it found and compiled
+`employee_concierge/orchestrator:0.1.0` correctly. The fix that actually
+solves "start a chat without errors" is sequencing, not structure: run
+`scripts/start-agents.sh` (added alongside this fix — starts the five
+downstream agents only, no orchestrator) before using BI's Run/Debug/chat
+on `orchestrator/`.
