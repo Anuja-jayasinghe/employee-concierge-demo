@@ -1,6 +1,9 @@
 # Local guidance for Claude Code, not part of tracked content.
 CLAUDE.md
 
+# Real secrets — never committed.
+.env
+
 # Python
 __pycache__/
 *.pyc

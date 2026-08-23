@@ -16,13 +16,15 @@ functional pass with a real Anthropic key) is next.
 ## Running the whole system locally
 
 ```sh
+cp .env.example .env   # then fill in a real ANTHROPIC_API_KEY
 ./scripts/start-all.sh              # all five agents + the orchestrator
 ./scripts/run-structural-checks.sh  # every check that doesn't need a real key
 ./scripts/stop-all.sh
 ```
 
-Set `ANTHROPIC_API_KEY` before `start-all.sh` for real LLM answers; left
-unset, everything still boots and every structural check still passes —
+`.env` (git-ignored) is where the real Anthropic key lives — `start-all.sh`
+sources it automatically. Left unset, everything still boots and every
+structural check still passes —
 see [the implementation plan](docs/implementation-plan.md)'s Phase 8
 entry for what "structural" covers here. `run-structural-checks.sh` may
 occasionally report the Payroll/Travel & Expense push-notification
