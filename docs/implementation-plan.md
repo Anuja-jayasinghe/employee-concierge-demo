@@ -115,19 +115,39 @@ Python · LangGraph · a2a-python SDK · JSON-RPC binding · real Anthropic back
 ### Phase 4 — Payroll Agent
 Java · a2a-java SDK · Quarkus · gRPC binding · real Anthropic backing (via `langchain4j-anthropic`)
 
-- [ ] `AgentExecutor` (a2a-java), real Anthropic model from the start, same pattern
-      already proven on `dice_agent` earlier in this project
-- [ ] Task lifecycle: payslip-correction request (`getTask`/`cancelTask`/`listTasks`)
-- [ ] Full push-notification CRUD — all four operations (this is the one agent proving
-      `listTaskPushNotificationConfigs`, the least-covered op elsewhere)
-- [ ] `getExtendedAgentCard` — admin-only "adjust another employee's payroll" skill
+- [x] `AgentExecutor` (a2a-java), real Anthropic model (langchain4j) from the start,
+      same pattern already proven on `dice_agent` earlier in this project
+- [x] Task lifecycle: payslip-correction request (`getTask`/`cancelTask`/`listTasks`)
+- [x] Full push-notification CRUD — all four operations verified against a real task
+      (this is the one agent proving `listTaskPushNotificationConfigs`, the
+      least-covered op elsewhere) — `InMemoryPushNotificationConfigStore` turned out
+      to be auto-wired by CDI, no extra code needed
+- [x] `getExtendedAgentCard` — admin-only "adjust another employee's payroll" skill,
+      gated by a real bearer-token check via a Quarkus `@GlobalInterceptor` scoped to
+      just that RPC. Rejects outright rather than downgrading like PeopleOperations —
+      the a2a-java gRPC reference module (1.1.0.Final) has no per-caller card-modifier
+      hook, confirmed by reading the SDK source
 
 **Test:**
-- [ ] Agent-card resolution checkable now. Push-notification config CRUD is pure data
-      storage (create/get/list/delete a config record) with no LLM involvement, so
-      it's testable now too, ahead of the key
-- [ ] **Task-lifecycle functional testing (`getTask`/`cancelTask`/`listTasks` driven by
-      an actual message) happens in Phase 9**, via `ballerina/a2a`'s `GrpcClient`
+- [x] Agent-card resolution (gRPC-only `supportedInterfaces`), push-notification config
+      CRUD (create/get/list/delete against a real task ID recovered from a graceful
+      LLM-call failure), and extended-card admin gating (both unauthenticated-rejected
+      and authenticated-3-skills) all verified now, no key needed — see
+      `verification/payroll`
+- [x] Confirmed the langchain4j -> A2A -> gRPC -> `ballerina/a2a` pipeline fails
+      gracefully without a real key, and that `getTask`/`cancelTask` genuinely
+      round-trip over gRPC
+- [ ] **Task-lifecycle functional testing (actual payslip-correction content from a
+      real answer) happens in Phase 9**, via `ballerina/a2a`'s `GrpcClient`
+
+**Real integration issues found and fixed for real (not worked around), documented
+in `agents/payroll/README.md` and inline in `application.properties`:**
+- gRPC and plain HTTP need separate ports — combining them (as the reference sample
+  this was modeled on does) broke the well-known agent-card HTTP GET
+- ballerina/http's client defaults to HTTP/2 cleartext prior-knowledge negotiation,
+  which doesn't interop with Vert.x's h2c handling; fixed by pinning this agent's
+  HTTP listener to HTTP/1.1 rather than requiring every `ballerina/a2a` caller to
+  know to override `httpVersion`
 
 ### Phase 5 — Travel & Expense Agent
 Java · a2a-java SDK · REST binding · real Anthropic backing
