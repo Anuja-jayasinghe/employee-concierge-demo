@@ -152,12 +152,25 @@ in `agents/payroll/README.md` and inline in `application.properties`:**
 ### Phase 5 — Travel & Expense Agent
 Java · a2a-java SDK · REST binding · real Anthropic backing
 
-- [ ] Task lifecycle: expense claim (`getTask`/`cancelTask`/`listTasks`)
-- [ ] Push notification config: create + get
+- [x] Task lifecycle: expense claim (`getTask`/`cancelTask`/`listTasks`), real
+      langchain4j-anthropic agent + two real tools (fileExpenseClaim, getClaimStatus)
+- [x] Push notification config: create + get (deliberately narrower than Payroll,
+      which already proved full CRUD)
 
 **Test:**
-- [ ] Agent-card resolution and push-notification config CRUD checkable now
-- [ ] **Task-lifecycle functional testing happens in Phase 9**, via `ballerina/a2a`'s `RestClient`
+- [x] Agent-card resolution (REST-only `supportedInterfaces`), task-lifecycle
+      round-tripping (`getTask`/`cancelTask`), and push-notification create+get all
+      verified now, no key needed — see `verification/travel_expense`
+- [x] Confirmed the langchain4j -> A2A -> REST -> `ballerina/a2a` pipeline fails
+      gracefully without a real key
+- [ ] **Task-lifecycle functional testing (actual expense-claim content from a real
+      answer) happens in Phase 9**, via `ballerina/a2a`'s `RestClient`
+
+**Two of Payroll's real integration fixes applied pre-emptively here** (documented
+in `agents/travel_expense/README.md`, reproduced once each to confirm they weren't
+gRPC-specific before pinning): HTTP/2 pinned off on the HTTP listener, and
+`protobuf-java`/`protobuf-java-util` pinned to 4.34.2 — the a2a-java 1.1.0.Final spec
+types turned out to be protobuf messages regardless of transport, not just for gRPC.
 
 ### Phase 6 — Push-notification webhook receiver
 - [ ] Minimal HTTP endpoint the orchestrator hosts
