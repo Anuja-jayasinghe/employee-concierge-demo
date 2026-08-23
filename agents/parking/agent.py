@@ -8,7 +8,8 @@ from data import SPOTS, find_mentioned_spot
 
 
 def check_spot(spot_id: str) -> str:
-    """Checks whether a specific WSO2 Colombo HQ parking spot is free.
+    """Checks whether a specific WSO2 Colombo HQ parking spot is free, and
+    who holds it if it's taken.
 
     Args:
         spot_id: The spot's id, e.g. "A01".
@@ -19,7 +20,10 @@ def check_spot(spot_id: str) -> str:
     spot = find_mentioned_spot(spot_id)
     if spot is None:
         return f'"{spot_id}" is not a known spot id.'
-    return f'Spot {spot.spot_id} ({spot.level}) is {"free" if spot.free else "taken"}.'
+    if spot.free:
+        return f'Spot {spot.spot_id} ({spot.level}) is free.'
+    holder = f', reserved by {spot.reserved_by}' if spot.reserved_by else ''
+    return f'Spot {spot.spot_id} ({spot.level}) is taken{holder}.'
 
 
 def list_free_spots() -> str:
@@ -40,8 +44,11 @@ class AgentResponse(BaseModel):
         message: The reply text for the user.
         status: completed | input-required | failed.
         reserve_spot_id: Set only when the user clearly wants to reserve
-            this exact spot; left null for availability questions or when
-            more information is needed before a reservation can proceed.
+            this exact spot and has given their name; left null for
+            availability questions or when more information is needed
+            before a reservation can proceed.
+        employee_name: The requester's real name for a reservation. Only
+            meaningful alongside reserve_spot_id.
     """
 
     message: str = Field(description='Reply text for the user')
@@ -52,9 +59,17 @@ class AgentResponse(BaseModel):
         default=None,
         description=(
             'Set only when the user clearly wants to reserve this exact '
-            'known spot id. Leave null for availability questions, or when '
-            'a reservation was requested but no single clear spot id was '
-            'given -- ask a clarifying question instead and leave this null.'
+            'known spot id AND has given their name. Leave null for '
+            'availability questions, or when a reservation was requested '
+            'but no single clear spot id or no name was given -- ask a '
+            'clarifying question instead and leave this null.'
+        ),
+    )
+    employee_name: str | None = Field(
+        default=None,
+        description=(
+            "The requester's real name, only set alongside reserve_spot_id "
+            'when both the spot id and the name are known.'
         ),
     )
 
@@ -68,23 +83,29 @@ root_agent = LlmAgent(
         'availability question (including general ones like "is anything '
         'free?"), call list_free_spots or check_spot as needed and answer '
         'from the real result -- never guess at spot state yourself.\n\n'
-        'For a reservation request, your only job is to decide which single '
-        'spot id the user wants -- do NOT call check_spot or list_free_spots '
-        'for a reservation request, and do not decide or comment on whether '
-        'that spot is actually free; a separate real system checks that and '
-        'will report back if it is taken. If they name one real spot id '
-        'clearly, set reserve_spot_id to it and status to "completed" '
-        'regardless of whether you think it might already be taken. If they '
-        'ask to reserve a spot but do not give a clear single spot id (e.g. '
-        '"reserve me a spot on level 2"), ask a real clarifying question '
-        'instead and leave reserve_spot_id null -- do not guess or pick one '
-        'for them.\n\n'
+        'For a reservation request, your job is to decide which single spot '
+        'id the user wants AND get their real name -- do NOT call check_spot '
+        'or list_free_spots for a reservation request, and do not decide or '
+        'comment on whether that spot is actually free; a separate real '
+        'system checks that and will report back if it is taken. Every real '
+        'reservation is tied to a real employee, so if they have not told '
+        'you their name yet, ask for it before reserving anything -- do not '
+        'reserve a spot without a name, and do not invent or assume one. If '
+        'they name one real spot id clearly AND have given their name, set '
+        'reserve_spot_id and employee_name and status to "completed" '
+        'regardless of whether you think the spot might already be taken. '
+        'If they ask to reserve a spot but do not give a clear single spot '
+        'id (e.g. "reserve me a spot on level 2"), or have not given their '
+        'name yet, ask a real clarifying question for whichever is missing '
+        'and leave reserve_spot_id/employee_name null -- do not guess or '
+        'pick one for them.\n\n'
         'Always respond with ONLY a JSON object matching this exact shape, '
         'no other text: {"message": "<your reply text>", "status": '
         '"completed" | "input-required" | "failed", "reserve_spot_id": '
-        '"<spot id>" | null}. Use "completed" once the request has been '
-        'fully answered, "input-required" when you need more information '
-        'from the user, and "failed" only if a tool call errored.'
+        '"<spot id>" | null, "employee_name": "<name>" | null}. Use '
+        '"completed" once the request has been fully answered, '
+        '"input-required" when you need more information from the user, '
+        'and "failed" only if a tool call errored.'
     ),
     tools=[check_spot, list_free_spots],
     output_schema=AgentResponse,

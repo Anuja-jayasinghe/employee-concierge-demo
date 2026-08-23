@@ -13,6 +13,7 @@ class Spot:
     level: str
     free: bool
     reserved_by_task_id: str | None = None
+    reserved_by: str | None = None
 
 
 SPOTS: dict[str, Spot] = {

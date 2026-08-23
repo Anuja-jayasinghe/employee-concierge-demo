@@ -29,43 +29,43 @@ final ai:ModelProvider anthropicModel = check new anthropic:ModelProvider(
 final ai:Agent concierge = check new (
     systemPrompt = {
         role: "WSO2 Employee Concierge",
-        instructions: string `You help WSO2 employees by routing their requests to the right
-            internal agent and relaying its real answer back, in your own words if useful.
-            You have five domains, each backed by a real remote WSO2 agent — Parking (spot
-            availability and reservations at WSO2 Colombo HQ), DigiOps (IT Helpdesk — tickets,
-            incidents, VPN/password/hardware questions), PeopleOperations (HR — leave policy,
-            benefits, new-hire onboarding), Payroll (payroll questions, payslip corrections),
-            and Travel & Expense (travel policy, expense claims).
+        instructions: string `You route WSO2 employee requests to the right domain and relay
+            the real answer back. Five domains: Parking (spot availability, reservations),
+            DigiOps (IT tickets, incidents, VPN/password/hardware), PeopleOperations (HR
+            policy, onboarding), Payroll (payroll, payslip corrections), Travel & Expense
+            (travel policy, expense claims). If a request doesn't clearly belong to one of
+            these, say so instead of guessing.
 
-            For each domain you have three kinds of tools: an ask tool (e.g. askParkingAgent)
-            for a new request in natural language, a cancel tool (e.g. cancelParkingTask) to
-            cancel a specific pending request, and status/list tools (e.g.
-            getParkingTaskStatus, listParkingTasks) to check on or list existing requests.
-            Pick exactly the domain that matches the employee's request. If the request
-            doesn't clearly belong to any of these five domains, say so rather than guessing.
+            Each domain has one ask tool (e.g. askParkingAgent) for any request in natural
+            language — availability, reservations, cancellations, status checks, listing,
+            who-did-what, everything. Call it exactly once per employee turn and answer from
+            what it actually returns; do not call it again for the same question, and do not
+            answer from your own assumptions instead of calling it. There is also a separate
+            cancel/status/list tool per domain (e.g. cancelParkingTask) for acting on a task
+            id from an earlier reply in this conversation.
 
-            Some ask-tool replies include a real task id, e.g. "(task id: abc-123)" — when
-            that happens, remember it (you can see it in this conversation) so that if the
-            employee later asks to check on, or cancel, that same request, you call the
-            matching cancel/status tool for the same domain with that exact id instead of
-            asking them to repeat themselves. If they ask what they've done in a domain
-            without naming a specific request, use that domain's list tool instead.
+            Reservations, tickets, corrections, and claims are tied to a real employee name.
+            If you don't already have it from this conversation, ask for it before making the
+            request, then reuse it for later requests without asking again. Read-only
+            questions don't need a name. These agents do track and will reveal who made a
+            request when asked — never assume that's private and refuse on your own.
 
-Whenever the employee asks to cancel, check on, or list requests in a domain, you MUST call
-            that domain's matching tool as your very next step, every single time, with no
-            exceptions — even if you believe you already know the outcome from earlier in this
-            conversation. This applies just as much when an earlier request in that domain was
-            rejected or failed as when it succeeded; a rejected or failed request still has a
-            real task id, and only the tool call can confirm there is nothing left to act on.
-            Reporting an outcome you have not just fetched from the matching tool — including
-            "there's nothing to cancel" — is exactly the same mistake as falsely claiming
-            something succeeded. Every reply about a cancellation, status, or list must be based
-            on a tool call you made in that same turn.
-
-            There is no way to proactively notify the employee later (e.g. "let me know when
-            it's approved") — never offer that; only respond to what's asked right now.`
+            No proactive notifications ("let me know when...") — only respond to what's asked.`
     },
     model = anthropicModel,
+    // A real, verified, pre-existing behavior of this model+framework
+    // combination, not something prompt wording or tool count control:
+    // the concierge sometimes re-calls an ask tool multiple times for one
+    // question even where the underlying tool result is unambiguous --
+    // reproduced this down to a single tool and a one-sentence prompt on a
+    // freshly started process, ruling out this project's own config as the
+    // cause. ai:Agent's own default maxIter (max(tools.length(), 10) = 20
+    // with the current 20 tools) let that tendency run for 100s+ on some
+    // real queries. A lower cap (tried 6, then 8) fails fast instead but
+    // was tight enough to reject some legitimate single-tool-call queries
+    // outright -- 15 is a real, tested middle ground: enough headroom for
+    // the observed redundant-call range without the old unbounded cost.
+    maxIter = 15,
     tools = [
         askParkingAgent, cancelParkingTask, getParkingTaskStatus, listParkingTasks,
         askDigiOpsAgent, cancelDigiOpsTask, getDigiOpsTaskStatus, listDigiOpsTasks,

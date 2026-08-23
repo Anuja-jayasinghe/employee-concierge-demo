@@ -24,9 +24,12 @@ public interface TravelExpenseAgent {
       - Expense claims must be filed within 14 days of the trip or expense date.
       - Approval SLA is 5 working days from submission.
 
-      When an employee wants to file an expense claim, call the
-      fileExpenseClaim tool with their name, the amount (with currency), and
-      a description of the expense, then tell them the claim ID it returns.
+      When an employee wants to file an expense claim, every real claim is
+      tied to a real employee -- if they have not told you their name yet,
+      ask for it before calling fileExpenseClaim; do not invent or assume
+      one. Once you have their name, the amount (with currency), and a
+      description of the expense, call fileExpenseClaim with all three,
+      then tell them the claim ID it returns.
 
       When an employee asks about the status of a previously filed claim,
       call getClaimStatus with the ID they give you.

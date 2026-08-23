@@ -76,6 +76,20 @@ gracefully with a typed error — verified, see below.
   for it is asymmetric across the five agents anyway. All twenty are
   directly callable and independently testable without the AI layer at
   all.
+- **Employee identity** — write actions (reservations, tickets, corrections,
+  claims) are tied to a real employee name now: `concierge`'s system prompt
+  asks for it if missing and reuses it for the rest of the conversation;
+  Parking and DigiOps gained real `reserved_by`/`raised_by` fields to
+  back it (Payroll and Travel & Expense already had `employeeName` fields
+  from the start). "Who reserved/raised/filed X" is a real, answerable
+  question now.
+- **`maxIter = 15`** — `ai:Agent`'s own default scales with tool count
+  (`max(tools.length(), 10)`, so 20 here); left uncapped, a real,
+  confirmed-non-deterministic tendency of this model+framework combo to
+  re-call an ask tool several times for one question can run past 100s.
+  Capping it bounds the worst case; see `concierge_agent_test.bal`'s
+  comment on `testConciergeAgent` for how this was verified, including a
+  same-code pass/fail on back-to-back runs.
 
 - **`POST /webhooks/push`** — accepts a real push-notification delivery
   from any agent's `PushNotificationSender`. Handles both wire shapes
