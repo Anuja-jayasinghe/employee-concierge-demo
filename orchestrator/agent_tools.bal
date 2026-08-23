@@ -66,6 +66,7 @@ isolated function askAgent(a2a:Client agentClient, string message) returns strin
 # + message - the employee's request, in natural language
 # + return - the agent's real reply, or an error if the request failed
 @ai:AgentTool
+@display {label: "", iconPath: ""}
 isolated function askParkingAgent(string message) returns string|error {
     return askAgent(parkingClient, message);
 }
@@ -77,6 +78,7 @@ isolated function askParkingAgent(string message) returns string|error {
 # + message - the employee's request, in natural language
 # + return - the agent's real reply, or an error if the request failed
 @ai:AgentTool
+@display {label: "", iconPath: ""}
 isolated function askDigiOpsAgent(string message) returns string|error {
     return askAgent(digiopsClient, message);
 }
@@ -87,6 +89,7 @@ isolated function askDigiOpsAgent(string message) returns string|error {
 # + message - the employee's request, in natural language
 # + return - the agent's real reply, or an error if the request failed
 @ai:AgentTool
+@display {label: "", iconPath: ""}
 isolated function askPeopleOperationsAgent(string message) returns string|error {
     return askAgent(peopleOpsClient, message);
 }
@@ -97,6 +100,7 @@ isolated function askPeopleOperationsAgent(string message) returns string|error 
 # + message - the employee's request, in natural language
 # + return - the agent's real reply, or an error if the request failed
 @ai:AgentTool
+@display {label: "", iconPath: ""}
 isolated function askPayrollAgent(string message) returns string|error {
     return askAgent(payrollClient, message);
 }
@@ -107,6 +111,7 @@ isolated function askPayrollAgent(string message) returns string|error {
 # + message - the employee's request, in natural language
 # + return - the agent's real reply, or an error if the request failed
 @ai:AgentTool
+@display {label: "", iconPath: ""}
 isolated function askTravelExpenseAgent(string message) returns string|error {
     return askAgent(travelExpenseClient, message);
 }
