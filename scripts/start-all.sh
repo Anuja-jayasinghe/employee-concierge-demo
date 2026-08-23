@@ -5,21 +5,30 @@
 # process's real stdout/stderr goes to logs/<name>.log; PIDs are tracked
 # in .pids/ so stop-all.sh can shut everything down cleanly.
 #
-# ANTHROPIC_API_KEY, if set in the calling shell, is passed through to
-# every agent and the orchestrator for real LLM answers (Phase 9). Left
-# unset, every agent still boots and serves its card correctly, but real
-# requests fail gracefully — the structural check this phase is about.
+# ANTHROPIC_API_KEY comes from a git-ignored .env at the repo root (never
+# passed on the command line or exported by hand) and is passed through
+# to every agent and the orchestrator for real LLM answers (Phase 9).
+# Without a .env / without the key set in it, every agent still boots and
+# serves its card correctly, but real requests fail gracefully — the
+# structural check Phase 8 is about.
 #
 # PAYROLL_ADMIN_TOKEN and PEOPLEOPS_STAFF_TOKEN default to the same demo
 # values verification/payroll and verification/peopleoperations already
 # hardcode, so running those scripts against a system brought up this way
-# just works. Override either to use a real secret instead.
+# just works. Set either in .env too to use a real secret instead.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="$ROOT_DIR/logs"
 PID_DIR="$ROOT_DIR/.pids"
 mkdir -p "$LOG_DIR" "$PID_DIR"
+
+if [ -f "$ROOT_DIR/.env" ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$ROOT_DIR/.env"
+    set +a
+fi
 
 : "${PAYROLL_ADMIN_TOKEN:=demo-payroll-admin-secret}"
 : "${PEOPLEOPS_STAFF_TOKEN:=demo-staff-secret}"
