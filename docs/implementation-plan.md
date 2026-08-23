@@ -293,10 +293,18 @@ Phase-7-era "fails gracefully without a key" tests key-aware
 real key now genuinely changes their correct expected outcome.
 
 ### Phase 10 — Negative / chaos testing
-- [ ] Reuse this session's fault-injection harness pattern against the now-real
-      running agents: malformed responses, concurrent load, resource-leak sanity
-- [ ] Write up results as a short report — this doubles as a contribution toward
-      `a2a-ballerina`'s own conformance checklist (Negative Test Report step)
+- [x] Same kind of fault-injection testing (malformed responses, concurrent load,
+      resource-leak sanity) against the now-real running agents —
+      `verification/chaos_test/main.bal`, run once. All 8 checks passed: zero panics,
+      zero crashes, zero hangs; RSS memory for a Python and a JVM agent both
+      *decreased* over the run. Deliberately spent zero additional Anthropic quota —
+      every check targets Parking or pure protocol/data operations, per the budget
+      concern raised earlier in this project
+- [x] Written up as `docs/NEGATIVE_TEST_REPORT.md` — this is a second, independent
+      pass of the same kind of testing already done against `a2a-ballerina` itself
+      earlier in that project's session (referenced by its own conformance checklist
+      item 12), this time against real running server implementations rather than a
+      test harness
 
 ### Phase 11 — Documentation finalization
 - [ ] Per-agent `README.md` (role, skills, how to run, port, transport binding)
