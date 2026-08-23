@@ -173,12 +173,28 @@ gRPC-specific before pinning): HTTP/2 pinned off on the HTTP listener, and
 types turned out to be protobuf messages regardless of transport, not just for gRPC.
 
 ### Phase 6 — Push-notification webhook receiver
-- [ ] Minimal HTTP endpoint the orchestrator hosts
-- [ ] Payroll, Parking, and Travel & Expense's registered configs point at it
-- [ ] Test: trigger a real state change on each of the three agents, confirm the
+- [x] Minimal HTTP endpoint the orchestrator hosts (`orchestrator/webhook_receiver.bal`,
+      port 9090) — the first piece of the `orchestrator/` package, which Phase 7 builds
+      the AI/tool-calling logic into
+- [x] Payroll, Parking, and Travel & Expense all genuinely registered and triggered
+      against it
+- [x] Test: trigger a real state change on each of the three agents, confirm the
       webhook POST actually arrives — this is what turns "config CRUD works" into
       "notifications actually work," per the gap flagged when this architecture was
-      first reviewed
+      first reviewed. **Everything here was testable with no Anthropic key** — see
+      `verification/webhook_receiver`
+
+**Real finding, not worked around:** a2a-java (1.1.0.Final) registers an inline
+`taskPushNotificationConfig` only after consuming the executor's first event, so a
+synchronous agent (Payroll, Travel & Expense) whose whole submit -> startWork ->
+LLM-call-fails sequence happens in one instant can race past that registration —
+confirmed by reproduction, delivery is genuinely non-deterministic for those two, and
+the terminal FAILED transition never delivers at all (an uncaught executor exception's
+conversion to FAILED bypasses the push pipeline entirely). Parking (Python) has no
+equivalent race and delivers reliably end to end. Documented in full in
+`orchestrator/README.md`; the verification script handles this honestly — Parking
+asserted deterministically, Payroll/Travel & Expense retried until one real delivery
+lands, rather than asserting something the SDK doesn't actually guarantee.
 
 ### Phase 7 — Orchestrator
 Ballerina · `ballerina/ai` · `ballerina/a2a` client · real Anthropic backing
