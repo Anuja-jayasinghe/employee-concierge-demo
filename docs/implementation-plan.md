@@ -1,7 +1,8 @@
 # Employee Concierge — Implementation Plan
 
-Status: **draft, awaiting review**. See [`architecture.md`](architecture.md) for the
-approved system design this plan implements.
+Status: **all 13 phases complete**. See [`architecture.md`](architecture.md) for the
+approved system design this plan implements, and each phase section below for what
+was actually built and verified.
 
 ## Decisions locked in for this plan
 

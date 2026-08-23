@@ -15,7 +15,12 @@ exactly once. Results were appended immediately after that one run.
 
 ```sh
 cp .env.example .env   # fill in a real ANTHROPIC_API_KEY
+
+# local process:
 ./scripts/start-all.sh
+
+# or Docker Compose (Phase 12), if that's the environment being demoed:
+./orchestrator/prepare-docker-build.sh && docker compose up -d --build
 ```
 
 Then either re-run the two scripts these scenarios came from —
