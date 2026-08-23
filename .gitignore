@@ -23,3 +23,7 @@ verification/*/Dependencies.toml
 
 # macOS
 .DS_Store
+
+# scripts/start-all.sh runtime state
+/logs/
+/.pids/
