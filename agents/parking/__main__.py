@@ -1,3 +1,5 @@
+import os
+
 import httpx
 import uvicorn
 
@@ -18,7 +20,13 @@ from starlette.applications import Starlette
 
 from agent_executor import ParkingAgentExecutor
 
-HOST = '127.0.0.1'
+# BIND_HOST is what the server actually listens on; ADVERTISED_HOST is
+# what the agent card tells other clients to connect to — different in
+# Docker, where the container must bind 0.0.0.0 but advertise the
+# Compose service name (see docker-compose.yml), same in local-process
+# use (both default to 127.0.0.1).
+BIND_HOST = os.getenv('A2A_BIND_HOST', '127.0.0.1')
+ADVERTISED_HOST = os.getenv('A2A_ADVERTISED_HOST', '127.0.0.1')
 PORT = 8000
 
 if __name__ == '__main__':
@@ -60,7 +68,7 @@ if __name__ == '__main__':
         supported_interfaces=[
             AgentInterface(
                 protocol_binding='HTTP+JSON',
-                url=f'http://{HOST}:{PORT}',
+                url=f'http://{ADVERTISED_HOST}:{PORT}',
                 protocol_version='1.0',
             )
         ],
@@ -85,4 +93,4 @@ if __name__ == '__main__':
     routes.extend(create_rest_routes(request_handler))
 
     app = Starlette(routes=routes)
-    uvicorn.run(app, host=HOST, port=PORT)
+    uvicorn.run(app, host=BIND_HOST, port=PORT)

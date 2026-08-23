@@ -6,13 +6,18 @@
 // that, since they don't depend on the AI layer at all.
 import ballerina/a2a;
 import ballerina/ai;
+import ballerina/os;
 import ballerina/uuid;
 
-const string PARKING_URL = "http://127.0.0.1:8000";
-const string DIGIOPS_URL = "http://127.0.0.1:8001";
-const string PEOPLEOPS_URL = "http://127.0.0.1:8002";
-const string PAYROLL_URL = "http://127.0.0.1:8003";
-const string TRAVEL_EXPENSE_URL = "http://127.0.0.1:8004";
+// Local-process defaults (127.0.0.1); each is overridable via its own env
+// var to the real Docker Compose service name (e.g. "http://parking:8000")
+// in containerized deployment, since 127.0.0.1 inside a container refers
+// to that container itself, not a sibling one.
+final string PARKING_URL = os:getEnv("PARKING_URL") != "" ? os:getEnv("PARKING_URL") : "http://127.0.0.1:8000";
+final string DIGIOPS_URL = os:getEnv("DIGIOPS_URL") != "" ? os:getEnv("DIGIOPS_URL") : "http://127.0.0.1:8001";
+final string PEOPLEOPS_URL = os:getEnv("PEOPLEOPS_URL") != "" ? os:getEnv("PEOPLEOPS_URL") : "http://127.0.0.1:8002";
+final string PAYROLL_URL = os:getEnv("PAYROLL_URL") != "" ? os:getEnv("PAYROLL_URL") : "http://127.0.0.1:8003";
+final string TRAVEL_EXPENSE_URL = os:getEnv("TRAVEL_EXPENSE_URL") != "" ? os:getEnv("TRAVEL_EXPENSE_URL") : "http://127.0.0.1:8004";
 
 final a2a:Client parkingClient = check new (PARKING_URL);
 final a2a:Client digiopsClient = check new (DIGIOPS_URL);

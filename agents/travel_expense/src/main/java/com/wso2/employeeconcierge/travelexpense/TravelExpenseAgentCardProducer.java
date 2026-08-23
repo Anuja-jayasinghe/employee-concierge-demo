@@ -20,6 +20,13 @@ public final class TravelExpenseAgentCardProducer {
   @ConfigProperty(name = "quarkus.http.port")
   private int httpPort;
 
+  // What the agent card tells other clients to connect to — "localhost"
+  // for local-process use, overridden to the Docker Compose service name
+  // in containerized deployment.
+  @Inject
+  @ConfigProperty(name = "a2a.advertised-host", defaultValue = "localhost")
+  private String advertisedHost;
+
   @Produces
   @PublicAgentCard
   public AgentCard agentCard() {
@@ -52,7 +59,7 @@ public final class TravelExpenseAgentCardProducer {
                     .examples(List.of("what's the per-diem rate for a Singapore trip?"))
                     .build()))
         .supportedInterfaces(
-            List.of(new AgentInterface(TransportProtocol.HTTP_JSON.asString(), "http://localhost:" + httpPort)))
+            List.of(new AgentInterface(TransportProtocol.HTTP_JSON.asString(), "http://" + advertisedHost + ":" + httpPort)))
         .build();
   }
 }

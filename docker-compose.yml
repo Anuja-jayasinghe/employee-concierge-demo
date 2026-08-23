@@ -1,0 +1,88 @@
+services:
+  parking:
+    build: ./agents/parking
+    ports:
+      - "8000:8000"
+    environment:
+      A2A_BIND_HOST: "0.0.0.0"
+      A2A_ADVERTISED_HOST: "parking"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/.well-known/agent-card.json')"]
+      interval: 3s
+      retries: 20
+
+  digiops:
+    build: ./agents/digiops
+    ports:
+      - "8001:8001"
+    environment:
+      A2A_BIND_HOST: "0.0.0.0"
+      A2A_ADVERTISED_HOST: "digiops"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/.well-known/agent-card.json')"]
+      interval: 3s
+      retries: 20
+
+  peopleoperations:
+    build: ./agents/peopleoperations
+    ports:
+      - "8002:8002"
+    environment:
+      A2A_BIND_HOST: "0.0.0.0"
+      A2A_ADVERTISED_HOST: "peopleoperations"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      PEOPLEOPS_STAFF_TOKEN: "${PEOPLEOPS_STAFF_TOKEN:-demo-staff-secret}"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/.well-known/agent-card.json')"]
+      interval: 3s
+      retries: 20
+
+  payroll:
+    build: ./agents/payroll
+    ports:
+      - "8003:8003"
+      - "9003:9003"
+    environment:
+      A2A_ADVERTISED_HOST: "payroll"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      PAYROLL_ADMIN_TOKEN: "${PAYROLL_ADMIN_TOKEN:-demo-payroll-admin-secret}"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8003'"]
+      interval: 3s
+      retries: 40
+
+  travel_expense:
+    build: ./agents/travel_expense
+    ports:
+      - "8004:8004"
+    environment:
+      A2A_ADVERTISED_HOST: "travel_expense"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8004'"]
+      interval: 3s
+      retries: 40
+
+  orchestrator:
+    build: ./orchestrator
+    ports:
+      - "9090:9090"
+    environment:
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      PARKING_URL: "http://parking:8000"
+      DIGIOPS_URL: "http://digiops:8001"
+      PEOPLEOPS_URL: "http://peopleoperations:8002"
+      PAYROLL_URL: "http://payroll:8003"
+      TRAVEL_EXPENSE_URL: "http://travel_expense:8004"
+    depends_on:
+      parking:
+        condition: service_healthy
+      digiops:
+        condition: service_healthy
+      peopleoperations:
+        condition: service_healthy
+      payroll:
+        condition: service_healthy
+      travel_expense:
+        condition: service_healthy

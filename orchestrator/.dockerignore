@@ -1,0 +1,6 @@
+target
+.ballerina
+tests
+Dockerfile
+.dockerignore
+docker-compose.yml

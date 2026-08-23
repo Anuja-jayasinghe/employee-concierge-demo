@@ -326,12 +326,52 @@ real key now genuinely changes their correct expected outcome.
       corrected from "two languages" to three (Python, Java, Ballerina)
 
 ### Phase 12 — Containerization (Docker Compose)
-Only after Phase 8–11 are done and reviewed, per the agreed sequencing.
+Only after Phase 8–11 are done and reviewed, per the agreed sequencing. Docker
+runtime used: Rancher Desktop (Docker Desktop isn't on the approved-software list;
+Rancher Desktop is, and provides a fully `docker`-CLI-compatible experience —
+confirmed for real, no differences hit).
 
-- [ ] Dockerfile per agent + orchestrator
-- [ ] `docker-compose.yml` bringing the whole system up
-- [ ] Re-run the Phase 9 smoke test against the containerized version, confirm parity
-      with the local-process version
+- [x] Dockerfile per agent + orchestrator — Python agents self-contained
+      single-stage; Java agents self-contained multi-stage (a2a-java is a real Maven
+      Central artifact); orchestrator multi-stage, with `prepare-docker-build.sh`
+      staging the local-only `ballerina/a2a` artifact into the build context first
+      (not published to Central)
+- [x] `docker-compose.yml` bringing the whole system up — healthchecks on every
+      agent, orchestrator gated on all five being *healthy* (not just started)
+- [x] Re-run the Phase 9 smoke test against the containerized version, confirm parity
+      with the local-process version — `verification/docker_parity` +
+      `scripts/docker-verify.sh`, all 7 checks pass: card resolution for all five
+      real containerized agents over Docker DNS, the orchestrator's webhook
+      receiver reachable, and a real `sendMessage` round-trip against Parking
+
+**Real issues found and fixed, not worked around:**
+- Every agent hardcoded `127.0.0.1` for both its own bind address and the URL its
+  card advertises to other clients — works for local-process, breaks in Docker (a
+  container must bind `0.0.0.0` but advertise its real Compose service name).
+  Split into separate bind-host/advertised-host config across all five agents plus
+  the orchestrator's downstream agent URLs
+- Docker's `COPY` always writes as root regardless of the image's own `USER`
+  directive unless `--chown` is given explicitly — broke the orchestrator's build
+  (`bal build` couldn't write `Dependencies.toml` as the non-root `ballerina` user)
+- A separate `mvn dependency:go-offline` layer doesn't know about Quarkus's
+  build-time/deployment-scope dependency resolution — simplified both Java
+  Dockerfiles to one `mvn package` step rather than chase a caching optimization
+  that wasn't resolving correctly
+- The existing local-process `verification/*` scripts, run unmodified from the
+  host, resolve a containerized agent's card fine but fail on the actual RPC call,
+  because the client uses the card's *advertised* URL (the real Docker service
+  name) for that, which the host can't resolve — only other containers on the
+  same Compose network can. `verification/docker_parity` runs from inside that
+  network instead, via a throwaway `ballerina/ballerina` container
+
+**Investigated but not pursued this phase:** WSO2 Integrator: BI, floated as an
+alternative to plain `ballerina/ai` in the original architecture doc. Confirmed
+for real (installed extensions, inspected their manifests, opened the real
+`orchestrator/` package in it) that BI is a VS Code extension layered on the
+standard Ballerina distribution — not a separate runtime — and activates on any
+plain `Ballerina.toml` package with no conversion needed. Has its own separate
+Docker/Kubernetes deployment tooling, independent of what was built here. See
+`README.md`'s "A note on WSO2 Integrator: BI" for the full writeup.
 
 ### Phase 13 — Final polish
 - [ ] Full walkthrough rehearsal against `DEMO_SCRIPT.md`
