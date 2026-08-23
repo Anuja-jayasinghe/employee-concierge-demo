@@ -24,13 +24,30 @@ isolated function recordNotification(NotificationReceipt receipt) {
     }
 }
 
+// The two SDKs in this demo shape the push-notification body differently
+// even though both are spec-compliant: a2a-java sends the Task/event flat
+// (JsonUtil.toJsonStreamingEvent), while a2a-python wraps it in a
+// StreamResponse oneof envelope (MessageToDict(to_stream_response(event))),
+// e.g. {"task": {...}} or {"statusUpdate": {...}}. Unwrap the envelope
+// first, if present, then extract fields from whatever's left.
+isolated function unwrapEnvelope(map<json> payload) returns map<json> {
+    foreach string key in ["task", "statusUpdate", "artifactUpdate", "message"] {
+        json? inner = payload[key];
+        if inner is map<json> {
+            return inner;
+        }
+    }
+    return payload;
+}
+
 isolated function extractTaskId(json payload) returns string? {
     if payload is map<json> {
-        json? id = payload["id"];
+        map<json> body = unwrapEnvelope(payload);
+        json? id = body["id"];
         if id is string {
             return id;
         }
-        json? taskId = payload["taskId"];
+        json? taskId = body["taskId"];
         if taskId is string {
             return taskId;
         }
@@ -40,7 +57,8 @@ isolated function extractTaskId(json payload) returns string? {
 
 isolated function extractState(json payload) returns string? {
     if payload is map<json> {
-        json? status = payload["status"];
+        map<json> body = unwrapEnvelope(payload);
+        json? status = body["status"];
         if status is map<json> {
             json? state = status["state"];
             if state is string {
