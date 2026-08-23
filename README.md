@@ -8,6 +8,7 @@ transport binding the client supports.
 - [Architecture](docs/architecture.md) — the approved proposal, in full.
 - [Implementation plan](docs/implementation-plan.md) — phased build plan, review this.
 - [Naming](NAMING.md) — generic names vs. confirmed WSO2 internal names.
+- [Research](docs/research/) — architectural questions settled with real evidence.
 
 Status: Phases 1–13 complete — all five agents, the orchestrator, the
 push-notification webhook receiver, local and Docker Compose bring-up,
@@ -66,12 +67,11 @@ that script's own comments for why.
 ### A note on WSO2 Integrator: BI
 
 The orchestrator's own architecture doc originally floated
-`ballerina/ai` "(or WSO2 Integrator: BI)" as an alternative. Investigated
-this for real rather than guessing: BI is a VS Code extension layered on
-the standard Ballerina distribution, not a separate runtime — both it and
-the base Ballerina extension activate on `workspaceContains:**/Ballerina.toml`,
-a plain package trigger, confirmed by inspecting the installed
-extensions' own manifests. `orchestrator/` opens in it with no conversion
-needed. BI also has its own separate Docker/Kubernetes deployment
-tooling, independent of the Dockerfiles here, if that path is wanted
-later.
+`ballerina/ai` "(or WSO2 Integrator: BI)" as an alternative — since
+confirmed as the platform this demo is actually presented through. Full
+write-up, with real evidence (not guessing):
+[`docs/research/wso2-integrator-bi-compatibility.md`](docs/research/wso2-integrator-bi-compatibility.md)
+(is `orchestrator/` compatible? yes) and
+[`docs/research/remote-agent-integration-patterns.md`](docs/research/remote-agent-integration-patterns.md)
+(how should the five downstream agents be wired in? as tools — already
+how `agent_tools.bal` is built).
