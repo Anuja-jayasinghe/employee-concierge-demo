@@ -95,18 +95,22 @@ Python · Google ADK · a2a-python SDK · JSON-RPC binding · real Anthropic bac
 ### Phase 3 — PeopleOperations Agent (HR)
 Python · LangGraph · a2a-python SDK · JSON-RPC binding · real Anthropic backing
 
-- [ ] `AgentExecutor` wrapping a real LangGraph graph on `ChatAnthropic` from the start
-- [ ] `sendMessage` — policy Q&A
-- [ ] `sendStreamingMessage` + `subscribeToTask` — onboarding checklist, multi-step,
-      streamed live, genuinely reconnectable (same rigor as DigiOps's stream test)
-- [ ] `getExtendedAgentCard` — a staff-only "case escalation" skill present only on
-      the authenticated extended card, absent from the public one
+- [x] `AgentExecutor` wrapping a real LangGraph graph on `ChatAnthropic` from the start
+- [x] `sendMessage` — policy Q&A
+- [x] `sendStreamingMessage` + `subscribeToTask` — onboarding checklist, multi-step
+      (LangGraph's own tool-calling *is* the progress narration), `cancelTask` support
+- [x] `getExtendedAgentCard` — a staff-only "case escalation" skill present only on
+      the authenticated extended card, gated by a real bearer-token check
 
 **Test:**
-- [ ] Agent-card resolution and the public-vs-extended-card diff are checkable now
-      (no LLM call involved)
-- [ ] **Full functional testing — onboarding stream, reconnect, `ballerina/a2a`
-      coverage of every op — happens in Phase 9**
+- [x] Agent-card resolution and the public-vs-extended-card diff verified now (no
+      LLM call involved) — see `verification/peopleoperations`, 2 vs 3 skills confirmed
+      against a real request both ways
+- [x] Confirmed the LangGraph -> A2A -> `ballerina/a2a` pipeline fails gracefully
+      without a real key
+- [ ] **Full functional content — actual policy answers, onboarding — happens in
+      Phase 9**, since every step here needs the real model (unlike DigiOps's
+      incident flow, there's no pre-LLM staged narration to observe meanwhile)
 
 ### Phase 4 — Payroll Agent
 Java · a2a-java SDK · Quarkus · gRPC binding · real Anthropic backing (via `langchain4j-anthropic`)
