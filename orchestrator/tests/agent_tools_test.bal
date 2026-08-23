@@ -65,3 +65,40 @@ function testAskTravelExpenseAgent() returns error? {
         test:assertTrue(result is error, "expected a graceful error without a real Anthropic key");
     }
 }
+
+// cancelTask/getTask/listTasks never touch the LLM -- pure a2a:Client
+// calls -- so these run unconditionally, no key needed. One
+// representative agent per transport binding (Parking: REST, DigiOps:
+// JSON-RPC, Payroll: gRPC) is enough to prove the shared
+// cancelAgentTask/getAgentTaskStatus/listAgentTasks helpers work over
+// each real wire; the other two agents share the same helpers.
+
+@test:Config {}
+function testListParkingTasks() returns error? {
+    string result = check listParkingTasks();
+    test:assertTrue(result.length() > 0, "expected a real, non-empty summary (even if it's just \"No tasks found.\")");
+}
+
+@test:Config {}
+function testGetParkingTaskStatusUnknownId() returns error? {
+    string|error result = getParkingTaskStatus("does-not-exist");
+    test:assertTrue(result is error, "expected a graceful error for an unknown task id");
+}
+
+@test:Config {}
+function testCancelParkingTaskUnknownId() returns error? {
+    string|error result = cancelParkingTask("does-not-exist");
+    test:assertTrue(result is error, "expected a graceful error for an unknown task id");
+}
+
+@test:Config {}
+function testListDigiOpsTasks() returns error? {
+    string result = check listDigiOpsTasks();
+    test:assertTrue(result.length() > 0, "expected a real, non-empty summary (even if it's just \"No tasks found.\")");
+}
+
+@test:Config {}
+function testListPayrollTasks() returns error? {
+    string result = check listPayrollTasks();
+    test:assertTrue(result.length() > 0, "expected a real, non-empty summary (even if it's just \"No tasks found.\")");
+}
