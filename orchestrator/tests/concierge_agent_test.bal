@@ -4,6 +4,13 @@
 // fail gracefully with a typed error, proving it's genuinely wired end to
 // end. With a real key present (Phase 9), it's asserted for real content
 // instead — see phase9_routing_test.bal for the routing-quality checks.
+//
+// Known real flakiness, not a bug in this test or in agent_tools.bal: the
+// concierge sometimes re-calls an ask tool several times for one question
+// even when the first call's result is already unambiguous -- confirmed
+// non-deterministic (same test passed cleanly in 32s on one run, hit
+// concierge_agent.bal's maxIter cap on another, unchanged code). If this
+// fails, re-run it before assuming a regression.
 import ballerina/os;
 import ballerina/test;
 

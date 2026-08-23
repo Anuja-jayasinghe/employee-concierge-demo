@@ -11,14 +11,14 @@
 import ballerina/ai;
 import ballerina/http;
 
-// A nested agent call (concierge picks among its tools, calls a
-// downstream agent, which runs its own real LLM call and replies) can
-// genuinely take longer than http:Listener's 30s default timeout,
-// especially with 20 tool definitions in concierge's own prompt now
-// instead of 5 -- reproduced this as a real "Idle timeout triggered
-// before initiating outbound response" failure. 120s covers a slow
-// double round-trip with real margin.
-listener http:Listener chatHttpListener = new (8090, timeout = 120);
+// A nested agent call (concierge picks a tool, calls a downstream agent,
+// which runs its own real LLM call and replies) can genuinely take longer
+// than http:Listener's 30s default -- reproduced as a real "Idle timeout
+// triggered before initiating outbound response" failure. concierge_agent.bal
+// caps how many of these round trips a single turn can make (maxIter); this
+// gives that bounded worst case real headroom rather than the HTTP layer
+// cutting it off first.
+listener http:Listener chatHttpListener = new (8090, timeout = 180);
 listener ai:Listener chatListener = new (chatHttpListener);
 
 service /concierge on chatListener {
