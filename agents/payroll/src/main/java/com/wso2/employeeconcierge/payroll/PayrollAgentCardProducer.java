@@ -3,7 +3,9 @@ package com.wso2.employeeconcierge.payroll;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
+import java.util.ArrayList;
 import java.util.List;
+import org.a2aproject.sdk.server.ExtendedAgentCard;
 import org.a2aproject.sdk.server.PublicAgentCard;
 import org.a2aproject.sdk.spec.AgentCapabilities;
 import org.a2aproject.sdk.spec.AgentCard;
@@ -12,7 +14,12 @@ import org.a2aproject.sdk.spec.AgentSkill;
 import org.a2aproject.sdk.spec.TransportProtocol;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-/** Produces the public agent card for the WSO2 Payroll Agent. */
+/**
+ * Produces the public and admin-only extended agent cards for the WSO2
+ * Payroll Agent. See AdminOnlyExtendedCardInterceptor for how the
+ * extended card is actually gated — the SDK's own GetExtendedAgentCard
+ * handling here is a fixed bean lookup, not per-caller.
+ */
 @ApplicationScoped
 public final class PayrollAgentCardProducer {
 
@@ -20,12 +27,54 @@ public final class PayrollAgentCardProducer {
   @ConfigProperty(name = "quarkus.grpc.server.port")
   private int grpcPort;
 
+  private static final List<AgentSkill> PUBLIC_SKILLS = List.of(
+      AgentSkill.builder()
+          .id("payslip-correction")
+          .name("Request a payslip correction")
+          .description("Files a payslip correction request for review.")
+          .tags(List.of("payroll", "payslip"))
+          .examples(List.of("my payslip shows the wrong tax deduction"))
+          .build(),
+      AgentSkill.builder()
+          .id("payroll-lookup")
+          .name("Answer payroll questions")
+          .description("Answers common payroll questions — pay cycle, deductions.")
+          .tags(List.of("payroll", "faq"))
+          .examples(List.of("when is the next pay date?"))
+          .build());
+
+  private static final AgentSkill ADMIN_SKILL = AgentSkill.builder()
+      .id("adjust-other-employee-payroll")
+      .name("Adjust another employee's payroll")
+      .description("Admin-only: directly adjusts a payroll record for an employee other than the caller.")
+      .tags(List.of("payroll", "admin"))
+      .examples(List.of("apply a one-off bonus of LKR 5000 to employee E-1042"))
+      .build();
+
   @Produces
   @PublicAgentCard
   public AgentCard agentCard() {
+    return baseBuilder("Payroll Agent",
+            "WSO2 Payroll — payslip corrections and payroll lookups.")
+        .skills(PUBLIC_SKILLS)
+        .build();
+  }
+
+  @Produces
+  @ExtendedAgentCard
+  public AgentCard extendedAgentCard() {
+    List<AgentSkill> skills = new ArrayList<>(PUBLIC_SKILLS);
+    skills.add(ADMIN_SKILL);
+    return baseBuilder("Payroll Agent (Admin)",
+            "WSO2 Payroll — payslip corrections, payroll lookups, and admin-only payroll adjustment.")
+        .skills(skills)
+        .build();
+  }
+
+  private AgentCard.Builder baseBuilder(final String name, final String description) {
     return AgentCard.builder()
-        .name("Payroll Agent")
-        .description("WSO2 Payroll — payslip corrections and payroll lookups.")
+        .name(name)
+        .description(description)
         .version("0.1.0")
         .capabilities(
             AgentCapabilities.builder()
@@ -35,24 +84,7 @@ public final class PayrollAgentCardProducer {
                 .build())
         .defaultInputModes(List.of("text"))
         .defaultOutputModes(List.of("text"))
-        .skills(
-            List.of(
-                AgentSkill.builder()
-                    .id("payslip-correction")
-                    .name("Request a payslip correction")
-                    .description("Files a payslip correction request for review.")
-                    .tags(List.of("payroll", "payslip"))
-                    .examples(List.of("my payslip shows the wrong tax deduction"))
-                    .build(),
-                AgentSkill.builder()
-                    .id("payroll-lookup")
-                    .name("Answer payroll questions")
-                    .description("Answers common payroll questions — pay cycle, deductions.")
-                    .tags(List.of("payroll", "faq"))
-                    .examples(List.of("when is the next pay date?"))
-                    .build()))
         .supportedInterfaces(
-            List.of(new AgentInterface(TransportProtocol.GRPC.asString(), "localhost:" + grpcPort)))
-        .build();
+            List.of(new AgentInterface(TransportProtocol.GRPC.asString(), "localhost:" + grpcPort)));
   }
 }
