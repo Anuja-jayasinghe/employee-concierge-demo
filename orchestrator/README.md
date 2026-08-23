@@ -154,8 +154,8 @@ bal test --sticky
 ```
 
 `tests/agent_tools_test.bal` calls each of the five tool functions
-directly — `askParkingAgent`'s reply is asserted for real content (needs
-no key), the other four for graceful failure without one.
+directly — all five are real LLM-backed agents, so each is asserted for
+real content with a key present, and graceful failure without one.
 `tests/concierge_agent_test.bal` does the same for the real `ai:Agent`
 itself. Every check here runs against real, live agent processes over the
 real `ballerina/a2a` wire — nothing here is mocked, only the *invocation

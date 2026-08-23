@@ -1,9 +1,15 @@
 // Phase 10 — negative / chaos testing against the real running system.
-// No Anthropic key needed and none spent: every check here targets
-// Parking (fully deterministic, no LLM) or pure protocol/data operations
-// (malformed-request rejection, push-notification config CRUD) that never
-// reach an LLM call on any agent. Real running processes throughout,
-// nothing mocked.
+//
+// Written when Parking was deterministic/no-LLM, so every check here
+// could target it for zero Anthropic spend. Parking is now real
+// LLM-backed too (see docs/architecture.md's "As built" note) — the
+// malformed-request checks below still don't reach an LLM call (they're
+// rejected at the transport/parsing layer), but the concurrent-load
+// check (20 simultaneous real sendMessage calls) now makes 20 real,
+// parallel Anthropic calls per run, no longer free or deterministic.
+// Not redesigned here — flagging for a real decision on how Phase 10's
+// chaos testing should work now that no downstream agent is LLM-free.
+// Real running processes throughout, nothing mocked.
 //
 // Start Parking and Payroll first (scripts/start-all.sh, or just those
 // two individually), then run this script once: bal run --sticky
@@ -29,7 +35,7 @@ function isAlive(string agentUrl) returns boolean {
 
 public function main() returns error? {
     int failures = 0;
-    io:println("=== Phase 10 — negative / chaos testing (no Anthropic key needed or spent) ===\n");
+    io:println("=== Phase 10 — negative / chaos testing (concurrent-load check now spends real Anthropic calls against Parking — see file header) ===\n");
 
     // --- 1. Malformed requests: REST binding (Parking) ---
     http:Client rawParking = check new (PARKING_URL);

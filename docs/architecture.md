@@ -3,15 +3,19 @@
 > Source: [Employee Concierge Architecture](https://claude.ai/code/artifact/4630c2c1-4859-48ad-950e-01888a74ce4d)
 > (approved proposal artifact, `ballerina/a2a` end-to-end demo architecture)
 >
-> **As built (Phases 1–10 complete):** matches this document, with two
+> **As built (Phases 1–10 complete):** matches this document, with three
 > corrections applied below — PeopleOperations/DigiOps replacing the
 > generic HR/IT Helpdesk names (confirmed WSO2-internal names, see
-> [`NAMING.md`](../NAMING.md)), and three agents (not just Payroll)
-> registering real push-notification webhooks back to the orchestrator.
-> Payroll, Parking, and Travel & Expense still carry generic names,
-> pending confirmation. The system is three languages, not two — Python
-> and Java on the agent side, Ballerina for the orchestrator — corrected
-> in the title above.
+> [`NAMING.md`](../NAMING.md)), three agents (not just Payroll)
+> registering real push-notification webhooks back to the orchestrator,
+> and Parking converted to real LLM-backed (Google ADK + Anthropic,
+> same as DigiOps) after live BI testing showed its original
+> keyword-only matching couldn't answer general questions like "is
+> anything free?" — it no longer proves the "A2A without an LLM" point
+> the original proposal below describes it for. Payroll, Parking, and
+> Travel & Expense still carry generic names, pending confirmation. The
+> system is three languages, not two — Python and Java on the agent
+> side, Ballerina for the orchestrator — corrected in the title above.
 
 A single client-side orchestrator, built on Ballerina and `ballerina/a2a`, fields
 employee requests and routes them to five independent listener agents — each a
@@ -31,7 +35,7 @@ flowchart LR
     Orchestrator["Employee Concierge<br/>Ballerina + ballerina/ai<br/>ballerina/a2a client"]
     HR["PeopleOperations Agent - HR<br/>Python - LangGraph<br/>policy Q and A - onboarding"]
     Payroll["Payroll Agent<br/>Java - a2a-java SDK<br/>payslips - corrections"]
-    Parking["Parking Manager Agent<br/>Python - no framework<br/>spot lookup - reservations"]
+    Parking["Parking Manager Agent<br/>Python - Google ADK<br/>spot lookup - reservations"]
     IT["DigiOps Agent - IT Helpdesk<br/>Python - Google ADK<br/>tickets - live incidents"]
     Travel["Travel and Expense Agent<br/>Java - a2a-java SDK<br/>bookings - claims"]
 
@@ -93,10 +97,13 @@ the clearest case for a push notification of the whole demo.
 `deleteTaskPushNotificationConfig`, `getExtendedAgentCard`
 
 ### Parking Manager Agent
-**Stack:** Python · no framework · REST (HTTP+JSON)
+**Stack:** Python · Google ADK + real Anthropic backing · REST (HTTP+JSON)
 
-Simple enough to need no agent framework at all — a spot lookup and a
-reservation, proving A2A works fine without an LLM in the loop.
+Originally built with no agent framework at all, proving A2A works fine
+without an LLM in the loop — converted to real LLM backing after live
+testing showed keyword-only matching couldn't handle general questions
+like "is anything free?". Task-lifecycle mechanics (the reservation
+window, cancelTask) are unchanged, still plain deterministic Python.
 
 **Proves:** `sendMessage`, `cancelTask`, `createTaskPushNotificationConfig`,
 `deleteTaskPushNotificationConfig`
