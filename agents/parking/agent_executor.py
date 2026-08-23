@@ -1,4 +1,5 @@
 import asyncio
+import re
 
 from google.adk.runners import Runner
 from google.genai import types
@@ -16,7 +17,12 @@ from a2a.server.tasks import TaskUpdater
 from agent import AgentResponse
 from data import find_mentioned_spot
 
-_RESERVE_KEYWORDS = ('reserve', 'book')
+# Word-boundary match on the imperative verb only -- a plain substring check
+# on "reserve"/"book" also matches "reserved"/"booked" in a purely
+# informational question like "who reserved spot B01?" or "is B01 booked?",
+# incorrectly routing it into the task-creating reservation flow instead of
+# the plain-message availability flow.
+_RESERVE_PATTERN = re.compile(r'\b(reserve|book)\b', re.IGNORECASE)
 
 # How long a reservation stays cancelable before it resolves — long enough
 # for a real cancelTask call to land inside the window, short enough not to
@@ -37,7 +43,7 @@ class ParkingAgentExecutor(AgentExecutor):
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         query = get_message_text(context.message) or ''
-        wants_reservation = any(k in query.lower() for k in _RESERVE_KEYWORDS)
+        wants_reservation = _RESERVE_PATTERN.search(query) is not None
         user_id, session_id = await self._ensure_session(context)
 
         if not wants_reservation:
@@ -104,9 +110,10 @@ class ParkingAgentExecutor(AgentExecutor):
 
             spot.free = False
             spot.reserved_by_task_id = task.id
+            spot.reserved_by = response.employee_name
             await updater.complete(
                 message=updater.new_agent_message(
-                    parts=[new_text_part(f'Spot {spot.spot_id} reserved.')]
+                    parts=[new_text_part(f'Spot {spot.spot_id} reserved for {spot.reserved_by}.')]
                 )
             )
         finally:
