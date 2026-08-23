@@ -9,8 +9,20 @@ import ballerina/ai;
 import ballerina/os;
 import ballerinax/ai.anthropic;
 
+// Falls back to this configurable when ANTHROPIC_API_KEY isn't in the
+// process's environment -- e.g. launched via WSO2 Integrator: BI's
+// Run/Debug, which spawns `bal run` directly without sourcing this
+// repo's .env the way scripts/start-agents.sh and start-all.sh do. Set
+// via orchestrator/Config.toml (gitignored, dev-time only), Ballerina's
+// own standard mechanism for exactly this.
+configurable string anthropicApiKey = "";
+
+final string resolvedAnthropicApiKey = os:getEnv("ANTHROPIC_API_KEY") != ""
+    ? os:getEnv("ANTHROPIC_API_KEY")
+    : anthropicApiKey;
+
 final ai:ModelProvider anthropicModel = check new anthropic:ModelProvider(
-    os:getEnv("ANTHROPIC_API_KEY"),
+    resolvedAnthropicApiKey,
     anthropic:CLAUDE_SONNET_4_5
 );
 
