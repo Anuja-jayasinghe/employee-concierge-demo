@@ -364,6 +364,9 @@ dependencies = [
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"}
 ]
+modules = [
+	{org = "ballerina", packageName = "os", moduleName = "os"}
+]
 
 [[package]]
 org = "ballerina"
@@ -462,6 +465,21 @@ dependencies = [
 ]
 
 [[package]]
+org = "ballerinax"
+name = "ai.anthropic"
+version = "1.3.4"
+dependencies = [
+	{org = "ballerina", name = "ai"},
+	{org = "ballerina", name = "constraint"},
+	{org = "ballerina", name = "http"},
+	{org = "ballerina", name = "jballerina.java"},
+	{org = "ballerina", name = "lang.array"}
+]
+modules = [
+	{org = "ballerinax", packageName = "ai.anthropic", moduleName = "ai.anthropic"}
+]
+
+[[package]]
 org = "employee_concierge"
 name = "orchestrator"
 version = "0.1.0"
@@ -470,9 +488,11 @@ dependencies = [
 	{org = "ballerina", name = "ai"},
 	{org = "ballerina", name = "http"},
 	{org = "ballerina", name = "log"},
+	{org = "ballerina", name = "os"},
 	{org = "ballerina", name = "test"},
 	{org = "ballerina", name = "time"},
-	{org = "ballerina", name = "uuid"}
+	{org = "ballerina", name = "uuid"},
+	{org = "ballerinax", name = "ai.anthropic"}
 ]
 modules = [
 	{org = "employee_concierge", packageName = "orchestrator", moduleName = "orchestrator"}
