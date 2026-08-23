@@ -1,7 +1,11 @@
 import os
+import sys
 
 import httpx
 import uvicorn
+
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
 
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.routes import create_agent_card_routes, create_rest_routes
@@ -18,6 +22,7 @@ from a2a.types import (
 )
 from starlette.applications import Starlette
 
+from agent import root_agent
 from agent_executor import ParkingAgentExecutor
 
 # BIND_HOST is what the server actually listens on; ADVERTISED_HOST is
@@ -30,6 +35,14 @@ ADVERTISED_HOST = os.getenv('A2A_ADVERTISED_HOST', '127.0.0.1')
 PORT = 8000
 
 if __name__ == '__main__':
+    if not os.getenv('ANTHROPIC_API_KEY'):
+        print(
+            'ANTHROPIC_API_KEY is not set — the agent will boot and serve '
+            'its card, but availability/reservation handling will fail on '
+            'the first real request. See docs/implementation-plan.md Phase 9.',
+            file=sys.stderr,
+        )
+
     skills = [
         AgentSkill(
             id='check-availability',
@@ -80,8 +93,14 @@ if __name__ == '__main__':
         httpx_client=httpx.AsyncClient(), config_store=push_config_store
     )
 
+    runner = Runner(
+        app_name=root_agent.name,
+        agent=root_agent,
+        session_service=InMemorySessionService(),
+    )
+
     request_handler = DefaultRequestHandler(
-        agent_executor=ParkingAgentExecutor(),
+        agent_executor=ParkingAgentExecutor(runner),
         task_store=InMemoryTaskStore(),
         agent_card=agent_card,
         push_config_store=push_config_store,

@@ -1,5 +1,8 @@
 import asyncio
 
+from google.adk.runners import Runner
+from google.genai import types
+
 from a2a.helpers import (
     get_message_text,
     new_task_from_user_message,
@@ -10,6 +13,7 @@ from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
 
+from agent import AgentResponse
 from data import find_mentioned_spot
 
 _RESERVE_KEYWORDS = ('reserve', 'book')
@@ -25,33 +29,52 @@ _cancel_signals: dict[str, asyncio.Event] = {}
 
 
 class ParkingAgentExecutor(AgentExecutor):
-    """Parking Manager Agent — no LLM, deterministic logic only."""
+    """Parking Manager Agent — real Anthropic-backed language understanding,
+    deterministic reservation lifecycle (unchanged from before)."""
+
+    def __init__(self, runner: Runner) -> None:
+        self._runner = runner
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         query = get_message_text(context.message) or ''
-        spot = find_mentioned_spot(query)
         wants_reservation = any(k in query.lower() for k in _RESERVE_KEYWORDS)
+        user_id, session_id = await self._ensure_session(context)
 
         if not wants_reservation:
-            await self._answer_availability(query, spot, context, event_queue)
+            await self._answer_availability(query, user_id, session_id, context, event_queue)
             return
 
-        if spot is None:
-            await event_queue.enqueue_event(
-                new_text_message(
-                    "I couldn't find a spot ID in that message — try "
-                    '"reserve spot A01"',
-                    context_id=context.message.context_id,
-                )
-            )
-            return
-
+        # Task is created and submitted immediately, before the LLM call —
+        # matches DigiOpsAgentExecutor's pattern, so a caller using
+        # returnImmediately still gets a fast Task ack; the real language
+        # understanding (which spot, if any) happens after.
         task = new_task_from_user_message(context.message)
         await event_queue.enqueue_event(task)
         updater = TaskUpdater(
             event_queue=event_queue, task_id=task.id, context_id=task.context_id
         )
         await updater.submit()
+
+        response = await self._call_llm(query, user_id, session_id)
+        if response is None:
+            await updater.failed(
+                message=updater.new_agent_message(
+                    parts=[new_text_part('No usable response produced.')]
+                )
+            )
+            return
+
+        spot = find_mentioned_spot(response.reserve_spot_id or '')
+        if spot is None:
+            # Either the LLM asked a real clarifying question (no clear
+            # spot named), or it named something that isn't a real spot —
+            # both cases genuinely need more input from the user rather
+            # than guessing.
+            await updater.requires_input(
+                message=updater.new_agent_message(parts=[new_text_part(response.message)])
+            )
+            return
+
         await updater.start_work(
             message=updater.new_agent_message(
                 parts=[new_text_part(f'Checking spot {spot.spot_id} with facilities...')]
@@ -89,17 +112,46 @@ class ParkingAgentExecutor(AgentExecutor):
         finally:
             _cancel_signals.pop(task.id, None)
 
-    async def _answer_availability(self, query, spot, context, event_queue) -> None:
-        if spot is None:
-            reply = (
-                "I couldn't find a spot ID in that message — try asking "
-                'like "is spot A01 free?"'
+    async def _ensure_session(self, context: RequestContext) -> tuple[str, str]:
+        user_id = 'a2a_user'
+        session_id = context.message.context_id or context.context_id
+        session = await self._runner.session_service.get_session(
+            app_name=self._runner.app_name, user_id=user_id, session_id=session_id
+        )
+        if session is None:
+            await self._runner.session_service.create_session(
+                app_name=self._runner.app_name, user_id=user_id, session_id=session_id
             )
-        elif spot.free:
-            reply = f'Spot {spot.spot_id} ({spot.level}) is currently free.'
-        else:
-            reply = f'Spot {spot.spot_id} ({spot.level}) is currently taken.'
+        return user_id, session_id
 
+    async def _call_llm(
+        self, query: str, user_id: str, session_id: str
+    ) -> AgentResponse | None:
+        """Runs the real ADK Runner and parses its structured response.
+        Returns None if the model produced no final response or the
+        response didn't parse as the expected schema."""
+        content = types.Content(role='user', parts=[types.Part.from_text(text=query)])
+        final_text = None
+        async for event in self._runner.run_async(
+            user_id=user_id, session_id=session_id, new_message=content
+        ):
+            if event.is_final_response() and event.content and event.content.parts:
+                final_text = event.content.parts[0].text
+
+        if final_text is None:
+            return None
+        try:
+            return AgentResponse.model_validate_json(final_text.strip())
+        except ValueError:
+            return None
+
+    async def _answer_availability(
+        self, query, user_id, session_id, context, event_queue
+    ) -> None:
+        response = await self._call_llm(query, user_id, session_id)
+        reply = response.message if response is not None else (
+            'Sorry, I was not able to process that.'
+        )
         await event_queue.enqueue_event(
             new_text_message(reply, context_id=context.message.context_id)
         )

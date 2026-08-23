@@ -1,7 +1,12 @@
 // Real ballerina/a2a client verification against the real, running Parking
-// Manager Agent (agents/parking) — no mocks, no stubs. Start the agent first:
+// Manager Agent (agents/parking) — no mocks, no stubs. Parking is real
+// LLM-backed (Google ADK + Anthropic) like the other four agents now, so
+// ANTHROPIC_API_KEY must be set for the agent process to answer
+// meaningfully — without it, check #1 below fails gracefully (the same
+// way it would against any of the other four agents), not a regression.
+// Start the agent first:
 //
-//   cd agents/parking && uv run __main__.py
+//   cd agents/parking && export ANTHROPIC_API_KEY=... && uv run __main__.py
 //
 // then run this script from this directory: bal run --sticky
 import ballerina/a2a;
