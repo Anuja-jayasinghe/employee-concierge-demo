@@ -371,8 +371,9 @@ for real (installed extensions, inspected their manifests, opened the real
 `orchestrator/` package in it) that BI is a VS Code extension layered on the
 standard Ballerina distribution — not a separate runtime — and activates on any
 plain `Ballerina.toml` package with no conversion needed. Has its own separate
-Docker/Kubernetes deployment tooling, independent of what was built here. See
-`README.md`'s "A note on WSO2 Integrator: BI" for the full writeup.
+Docker/Kubernetes deployment tooling, independent of what was built here. Full
+writeup, plus the follow-up on how BI expects a remote agent wired in (as a
+tool — matches `agent_tools.bal` already): `docs/research/`.
 
 ### Phase 13 — Final polish
 - [x] Full walkthrough rehearsal — fresh `stop-all.sh` -> `start-all.sh` ->
