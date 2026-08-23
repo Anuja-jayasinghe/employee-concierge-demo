@@ -1,7 +1,17 @@
-# Employee Concierge: one orchestrator, five agents, three transports, two languages
+# Employee Concierge: one orchestrator, five agents, three transports, three languages
 
 > Source: [Employee Concierge Architecture](https://claude.ai/code/artifact/4630c2c1-4859-48ad-950e-01888a74ce4d)
 > (approved proposal artifact, `ballerina/a2a` end-to-end demo architecture)
+>
+> **As built (Phases 1–10 complete):** matches this document, with two
+> corrections applied below — PeopleOperations/DigiOps replacing the
+> generic HR/IT Helpdesk names (confirmed WSO2-internal names, see
+> [`NAMING.md`](../NAMING.md)), and three agents (not just Payroll)
+> registering real push-notification webhooks back to the orchestrator.
+> Payroll, Parking, and Travel & Expense still carry generic names,
+> pending confirmation. The system is three languages, not two — Python
+> and Java on the agent side, Ballerina for the orchestrator — corrected
+> in the title above.
 
 A single client-side orchestrator, built on Ballerina and `ballerina/a2a`, fields
 employee requests and routes them to five independent listener agents — each a
@@ -19,10 +29,10 @@ integration with any of them.
 flowchart LR
     Employee((Employee))
     Orchestrator["Employee Concierge<br/>Ballerina + ballerina/ai<br/>ballerina/a2a client"]
-    HR["HR Agent<br/>Python - LangGraph<br/>policy Q and A - onboarding"]
+    HR["PeopleOperations Agent - HR<br/>Python - LangGraph<br/>policy Q and A - onboarding"]
     Payroll["Payroll Agent<br/>Java - a2a-java SDK<br/>payslips - corrections"]
     Parking["Parking Manager Agent<br/>Python - no framework<br/>spot lookup - reservations"]
-    IT["IT Helpdesk Agent<br/>Python - Google ADK<br/>tickets - live incidents"]
+    IT["DigiOps Agent - IT Helpdesk<br/>Python - Google ADK<br/>tickets - live incidents"]
     Travel["Travel and Expense Agent<br/>Java - a2a-java SDK<br/>bookings - claims"]
 
     Employee -- asks --> Orchestrator
@@ -31,14 +41,17 @@ flowchart LR
     Orchestrator -- "A2A - REST" --> Parking
     Orchestrator -- "A2A - JSON-RPC" --> IT
     Orchestrator -- "A2A - REST" --> Travel
+    Parking -. "webhook POST on task completion" .-> Orchestrator
     Payroll -. "webhook POST on task completion" .-> Orchestrator
+    Travel -. "webhook POST on task completion" .-> Orchestrator
 ```
 
 Five independently deployable agents sit behind the orchestrator, each a genuine
 A2A server — different language, different framework, different transport
-binding — reached purely through the open protocol. The one reversed edge is a
-push-notification webhook the agent calls back into the orchestrator, not the
-orchestrator polling it.
+binding — reached purely through the open protocol. The three reversed edges are
+real push-notification webhooks the agents call back into the orchestrator's own
+receiver (`orchestrator/webhook_receiver.bal`), not the orchestrator polling them —
+built in Phase 6, ahead of this doc's original single-Payroll sketch.
 
 ## The orchestrator
 
@@ -49,8 +62,10 @@ behind it purely through `ballerina/a2a`.
 Stack: **Ballerina**, **ballerina/ai** (or WSO2 Integrator: BI), **ballerina/a2a client**.
 
 The LLM decides which specialist a given request belongs to; `ballerina/a2a` is
-the only thing that actually talks to it. How each agent gets registered with
-the orchestrator is still open and will be decided separately.
+the only thing that actually talks to it. As built, each of the five specialists
+is a fixed local URL the orchestrator resolves once at startup (`agent_tools.bal`)
+— real service discovery/registration for a genuine multi-host deployment remains
+future work beyond this local-process demo.
 
 ## The five listener agents
 
@@ -59,7 +74,7 @@ framework, and transport binding are chosen so the five together prove every one
 of the client's 11 operations and all three transport bindings, with genuine
 multi-language interoperability.
 
-### HR Agent
+### PeopleOperations Agent (HR)
 **Stack:** Python · LangGraph · JSON-RPC
 
 Policy questions answered instantly; onboarding is a real multi-step, multi-day
@@ -86,7 +101,7 @@ reservation, proving A2A works fine without an LLM in the loop.
 **Proves:** `sendMessage`, `cancelTask`, `createTaskPushNotificationConfig`,
 `deleteTaskPushNotificationConfig`
 
-### IT Helpdesk Agent
+### DigiOps Agent (IT Helpdesk)
 **Stack:** Python · Google ADK · JSON-RPC
 
 FAQ answers alongside a real ticket lifecycle, plus a live incident
@@ -112,14 +127,14 @@ employee's day naturally touches several.
 
 | Operation | Exercised by |
 |---|---|
-| `sendMessage` | HR · Parking · IT Helpdesk |
-| `sendStreamingMessage` | HR (onboarding) · IT Helpdesk (incident) |
-| `getTask` | Payroll · IT Helpdesk · Travel & Expense |
-| `cancelTask` | Payroll · Parking · IT Helpdesk · Travel & Expense |
-| `subscribeToTask` | HR · IT Helpdesk |
-| `listTasks` | Payroll · IT Helpdesk · Travel & Expense |
+| `sendMessage` | PeopleOperations · Parking · DigiOps |
+| `sendStreamingMessage` | PeopleOperations (onboarding) · DigiOps (incident) |
+| `getTask` | Payroll · DigiOps · Travel & Expense |
+| `cancelTask` | Payroll · Parking · DigiOps · Travel & Expense |
+| `subscribeToTask` | PeopleOperations · DigiOps |
+| `listTasks` | Payroll · DigiOps · Travel & Expense |
 | `createTaskPushNotificationConfig` | Payroll · Parking · Travel & Expense |
 | `getTaskPushNotificationConfig` | Payroll · Travel & Expense |
 | `listTaskPushNotificationConfigs` | Payroll |
 | `deleteTaskPushNotificationConfig` | Payroll · Parking |
-| `getExtendedAgentCard` | HR (staff-only escalation skill) · Payroll (admin-only cross-employee adjustment skill) |
+| `getExtendedAgentCard` | PeopleOperations (staff-only escalation skill) · Payroll (admin-only cross-employee adjustment skill) |

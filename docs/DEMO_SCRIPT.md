@@ -1,14 +1,34 @@
-# Demo Script — Phase 9 functional pass
+# Demo Script
 
-Written before any scenario is run against the real Anthropic API, per the
-implementation plan's rule for this phase: script first, execute once.
-Results are appended to each scenario after the one real run — see
-`RESULT:` lines.
+The presentation walkthrough for the Employee Concierge system — every
+scenario below is real (see the `RESULT:` line under each), so this
+doubles as the actual live-demo script: read a request aloud, show the
+real reply, move to the next one. No scenario here has ever been faked or
+adjusted after the fact.
+
+Originally written *before* any scenario was run against the real
+Anthropic API (Phase 9's rule: script first, execute once, to avoid
+ad-hoc repeated querying against a rate-limited real key), then executed
+exactly once. Results were appended immediately after that one run.
+
+## Running the demo live
+
+```sh
+cp .env.example .env   # fill in a real ANTHROPIC_API_KEY
+./scripts/start-all.sh
+```
+
+Then either re-run the two scripts these scenarios came from —
+`verification/phase9_smoke_test` (scenarios 1–6, direct-to-agent) and
+`orchestrator`'s `bal test --sticky` (scenarios 7–10, orchestrator
+routing) — or just ask an agent the same questions directly, e.g. with
+`curl` or any A2A client, and read the real reply live instead of the
+recorded one below.
 
 Each scenario is either a direct call to one agent (proving that agent's
 own real content) or a natural-language request through the orchestrator
 (proving real routing quality — does the concierge Agent pick the right
-tool). Executed by `verification/phase9_smoke_test/main.bal`.
+tool).
 
 ## Direct-to-agent scenarios
 

@@ -307,12 +307,23 @@ real key now genuinely changes their correct expected outcome.
       test harness
 
 ### Phase 11 — Documentation finalization
-- [ ] Per-agent `README.md` (role, skills, how to run, port, transport binding)
-- [ ] `DEMO_SCRIPT.md` — the actual presentation walkthrough
-- [ ] `NAMING.md` updated with any confirmed WSO2 names, renames applied throughout
-      code + docs in one pass (not piecemeal)
-- [ ] `architecture.md` re-checked against what was actually built, corrected if
-      anything drifted during implementation
+- [x] Per-agent `README.md` (role, skills, how to run, port, transport binding) —
+      already written phase-by-phase for all five agents plus the orchestrator;
+      spot-checked complete, no gaps found
+- [x] `DEMO_SCRIPT.md` — reframed as the live presentation walkthrough (it already
+      carried real, verified scenarios and results from Phase 9; added a "running
+      the demo live" section)
+- [x] `NAMING.md` — checked; nothing to update, no new WSO2 names were confirmed
+      during implementation. Payroll, Parking, Travel & Expense, and the
+      orchestrator remain generic pending names, as already tracked
+- [x] `architecture.md` re-checked against what was actually built — real drift
+      found and corrected: HR/IT Helpdesk renamed to PeopleOperations/DigiOps
+      throughout (confirmed names, applied everywhere else since Phases 2-3 but
+      never back-ported to this doc); the push-notification diagram/text updated
+      from "Payroll only" to the real three agents (Parking, Payroll, Travel &
+      Expense) that register webhooks; the "how agents get registered — still
+      open" line replaced with what was actually built (fixed local URLs); title
+      corrected from "two languages" to three (Python, Java, Ballerina)
 
 ### Phase 12 — Containerization (Docker Compose)
 Only after Phase 8–11 are done and reviewed, per the agreed sequencing.
