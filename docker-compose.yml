@@ -68,6 +68,7 @@ services:
     build: ./orchestrator
     ports:
       - "9090:9090"
+      - "8090:8090"
     environment:
       ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
       PARKING_URL: "http://parking:8000"
