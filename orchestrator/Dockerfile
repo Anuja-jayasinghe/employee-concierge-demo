@@ -14,5 +14,5 @@ FROM ballerina/ballerina:2201.13.5
 WORKDIR /app
 COPY --chown=ballerina:ballerina --from=build /app/target/bin/orchestrator.jar ./
 
-EXPOSE 9090
+EXPOSE 9090 8090
 CMD ["bal", "run", "orchestrator.jar"]
