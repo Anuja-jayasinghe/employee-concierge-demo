@@ -83,6 +83,25 @@ below.
   to a synchronous request/reply turn, and support for it is asymmetric
   across the five agents anyway. All five tools are directly callable and
   independently testable without the AI layer at all.
+- **Real long-running tasks (PeopleOperations onboarding, DigiOps hardware
+  provisioning)** — both now genuinely take ~10 real minutes, staged and
+  cancellable, instead of finishing instantly. `sendToAgent` passes
+  `returnImmediately: true` on every `sendMessage` call (every agent that
+  creates a real `Task` — all of them except Parking's plain availability
+  check — otherwise blocks on the underlying `http:Client`'s stock 30s
+  timeout regardless of the real work's actual duration), then polls
+  `getTask` for up to 20s before falling back to the honest "still
+  working, task id: X" reply `summarizeTask` already produces. This is why
+  even fast agents now take one extra quick round trip instead of a single
+  blocking call — content is unaffected either way.
+  Each agent's own step-delay env var
+  (`ONBOARDING_STEP_DELAY_SECONDS`, `HARDWARE_PROVISIONING_STEP_DELAY_SECONDS`
+  — both default ~200s × 3 steps ≈ 10 min) is read once at that Python
+  process's start. **Setting it in the shell you happen to run `bal test`
+  or `curl` from does nothing** — it only takes effect if set in `.env`
+  *before* `scripts/start-agents.sh`/`start-all.sh` launches those
+  processes. Restart the agents to switch between the real ~10-minute
+  pace and a shorter one for manual testing.
 - **Employee identity** — write actions (reservations, tickets, corrections,
   claims) are tied to a real employee name: `concierge`'s system prompt
   asks for it if missing and reuses it for the rest of the conversation;

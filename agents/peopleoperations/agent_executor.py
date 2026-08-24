@@ -1,4 +1,5 @@
 import asyncio
+import os
 
 from a2a.helpers import get_message_text, new_task_from_user_message, new_text_part
 from a2a.server.agent_execution import AgentExecutor, RequestContext
@@ -6,6 +7,17 @@ from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
 
 from agent import PeopleOperationsAgent
+
+# Real, staged wall-clock delay per onboarding step. provision_laptop,
+# assign_desk, and enroll_benefits each already run instantly (in-memory
+# dict mutations) -- this is what actually makes onboarding a genuine
+# long-running, pollable, cancellable task instead of three back-to-back
+# no-op tool calls. Read once at process start; an env override only
+# affects agent processes *started* after it's set, not ones already
+# running -- see orchestrator/README.md for why that matters.
+_ONBOARDING_STEP_DELAY_SECONDS = int(
+    os.environ.get('ONBOARDING_STEP_DELAY_SECONDS', '200')
+)
 
 # task_id -> asyncio.Event, set by cancel() to interrupt a pending
 # onboarding/policy-Q&A stream between yielded steps. In-memory only.
@@ -52,6 +64,20 @@ class PeopleOperationsAgentExecutor(AgentExecutor):
                             parts=[new_text_part(item['content'])]
                         )
                     )
+                    if item['content'].startswith('Running onboarding step:'):
+                        # The LLM's own decision to call this tool already
+                        # happened for real above -- this stages the real
+                        # wall-clock time provisioning that step would take,
+                        # racing it against cancel() so cancelTask has a
+                        # real window to interrupt mid-step.
+                        try:
+                            await asyncio.wait_for(
+                                cancel_signal.wait(),
+                                timeout=_ONBOARDING_STEP_DELAY_SECONDS,
+                            )
+                            return  # cancel() already handled the task-state transition
+                        except asyncio.TimeoutError:
+                            pass
                 elif require_user_input:
                     await updater.requires_input(
                         message=updater.new_agent_message(

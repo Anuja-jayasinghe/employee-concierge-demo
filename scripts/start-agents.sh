@@ -21,6 +21,15 @@
 # values verification/payroll and verification/peopleoperations already
 # hardcode, so running those scripts against a system brought up this way
 # just works. Set either in .env too to use a real secret instead.
+#
+# ONBOARDING_STEP_DELAY_SECONDS (peopleoperations) and
+# HARDWARE_PROVISIONING_STEP_DELAY_SECONDS (digiops) default to ~200s each
+# (3 steps ~= 10 real minutes) -- genuine long-running, cancellable tasks,
+# not simulated ones. Each Python process reads its value once at start,
+# so setting either in .env only takes effect on the *next* time this
+# script starts that agent -- it does nothing for an already-running one,
+# and setting it in a different shell (e.g. the one running `bal test`)
+# has no effect at all.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

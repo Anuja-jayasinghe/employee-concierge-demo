@@ -13,6 +13,7 @@
 // whole orchestrator failed to boot if any one agent was down.
 import ballerina/a2a;
 import ballerina/ai;
+import ballerina/lang.runtime;
 import ballerina/os;
 import ballerina/uuid;
 
@@ -109,9 +110,53 @@ isolated function extractResponseText(a2a:Task|a2a:Message result) returns strin
     panic error("unreachable: result is always a2a:Task or a2a:Message");
 }
 
+// Some downstream agents (onboarding, hardware provisioning) run for
+// real minutes; most finish in well under a second. returnImmediately
+// makes every sendMessage call return as soon as the task is created
+// (SUBMITTED), regardless of how long the real work takes -- so the
+// only way to keep today's fast agents feeling synchronous is to poll
+// here, bounded, rather than block on sendMessage itself (which the
+// underlying http:Client's stock 30s timeout would risk on a slow one
+// anyway). A still-non-terminal task after the window just falls
+// through to extractResponseText/summarizeTask as-is -- that already
+// produces an honest "still working, here's the task id" reply with no
+// new formatting needed.
+final decimal MAX_INITIAL_WAIT_SECONDS = 20d;
+final decimal POLL_INTERVAL_SECONDS = 0.5d;
+
+isolated function isSettled(a2a:TaskState state) returns boolean {
+    return state == a2a:TASK_STATE_COMPLETED || state == a2a:TASK_STATE_FAILED
+        || state == a2a:TASK_STATE_CANCELED || state == a2a:TASK_STATE_REJECTED
+        || state == a2a:TASK_STATE_INPUT_REQUIRED || state == a2a:TASK_STATE_AUTH_REQUIRED;
+}
+
+// Polls a still-in-progress task, checking immediately first (no leading
+// sleep -- returnImmediately means the very first check happens right at
+// task-creation time regardless of work duration, so a fixed sleep before
+// it would just be dead latency on every call), then sleeping between
+// subsequent attempts, up to MAX_INITIAL_WAIT_SECONDS total.
+isolated function pollUntilSettled(a2a:Client agentClient, a2a:Task initial) returns a2a:Task|error {
+    a2a:Task task = initial;
+    decimal elapsed = 0d;
+    boolean first = true;
+    while !isSettled(task.status.state) && elapsed < MAX_INITIAL_WAIT_SECONDS {
+        if !first {
+            runtime:sleep(POLL_INTERVAL_SECONDS);
+            elapsed += POLL_INTERVAL_SECONDS;
+        }
+        first = false;
+        task = check agentClient->getTask(task.id);
+    }
+    return task;
+}
+
 isolated function sendToAgent(a2a:Client agentClient, string message) returns string|error {
     a2a:Message msg = {messageId: uuid:createType4AsString(), role: a2a:ROLE_USER, parts: [{text: message}]};
-    a2a:Task|a2a:Message result = check agentClient->sendMessage(msg);
+    a2a:Task|a2a:Message result = check agentClient->sendMessage(msg, config = {returnImmediately: true});
+    if result is a2a:Task {
+        a2a:Task settled = check pollUntilSettled(agentClient, result);
+        return extractResponseText(settled);
+    }
     return extractResponseText(result);
 }
 

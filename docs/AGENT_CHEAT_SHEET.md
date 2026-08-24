@@ -68,10 +68,16 @@ VPN, password resets, hardware requests, and IT incidents.
 
 ✅ Ask:
 - "how do I reset my VPN password?"
-- "I need a new laptop charger" (asks your name, then opens a real ticket with an ID)
+- "I need a new laptop charger" (asks your name, then opens a real ticket
+  with an ID — the ticket itself is created right away, but the request
+  then genuinely takes ~10 real minutes to work through approval and
+  fulfillment, staying open the whole time)
 - "who raised ticket X?"
-- "what's the status of that ticket?" (recalls the id from the conversation)
-- "cancel that ticket"
+- "what's the status of that ticket?" (recalls the id from the conversation
+  — while it's still being fulfilled, this gives a real "still working"
+  answer, not a fake instant "done")
+- "cancel that ticket" (a real mid-fulfillment cancel, not just deleting a
+  record)
 - "my laptop can't reach the internal network" (investigates, gives a diagnosis)
 - "what tickets have been raised?" (lists every one this agent knows about)
 
@@ -86,8 +92,12 @@ Leave policy, benefits, and new-hire onboarding.
 ✅ Ask:
 - "how many annual leave days do I have?"
 - "what benefits am I eligible for?"
-- "onboard Jane Doe as a new hire" (already required a name before this change — runs a real multi-step provisioning flow)
-- "what's the status of that onboarding?" / "cancel it"
+- "onboard Jane Doe as a new hire" (runs a real ~10-minute provisioning
+  flow — laptop, desk, benefits, one staged step at a time — not a fake
+  instant confirmation)
+- "what's the status of that onboarding?" (a real, honest in-progress
+  answer while it's still running, not just at the end) / "cancel it"
+  (a real mid-flight cancel)
 - "what onboardings have been run?"
 
 ❌ Can't:

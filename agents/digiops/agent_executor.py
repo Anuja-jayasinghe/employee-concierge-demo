@@ -1,4 +1,5 @@
 import asyncio
+import os
 
 from google.adk.runners import Runner
 from google.genai import types
@@ -22,8 +23,24 @@ _INVESTIGATION_STEPS = (
 )
 _STEP_DELAY_SECONDS = 2
 
+# Same idea for a hardware ticket that was actually just created (see
+# _resolve_from_response) -- the ticket itself is real and immediate, but
+# real fulfillment (manager approval, ordering, prep) takes real time.
+# Read once at process start -- see orchestrator/README.md for why an env
+# override only affects agent processes started after it's set.
+_PROVISIONING_STEPS = (
+    'Routing to manager for approval...',
+    'Approved — ordering hardware...',
+    'Preparing for pickup...',
+)
+_PROVISIONING_STEP_DELAY_SECONDS = int(
+    os.environ.get('HARDWARE_PROVISIONING_STEP_DELAY_SECONDS', '200')
+)
+
 # task_id -> asyncio.Event, set by cancel() to interrupt a pending
-# incident investigation's staged delays. In-memory only.
+# incident investigation or hardware-provisioning flow's staged delays.
+# In-memory only. Registered once per task in execute() so it covers
+# whichever flow actually runs.
 _cancel_signals: dict[str, asyncio.Event] = {}
 
 
@@ -47,10 +64,23 @@ class DigiOpsAgentExecutor(AgentExecutor):
         )
         await updater.submit()
 
-        if is_incident:
-            await self._run_incident_flow(query, user_id, session_id, updater)
-        else:
-            await self._run_llm_flow(query, user_id, session_id, updater)
+        # Registered once per task here rather than per-flow: create_ticket
+        # is available to the LLM in both the plain and incident-diagnosis
+        # flows below, so either one can end up needing a cancellable
+        # provisioning wait via _resolve_from_response.
+        cancel_signal = asyncio.Event()
+        _cancel_signals[task.id] = cancel_signal
+        try:
+            if is_incident:
+                await self._run_incident_flow(
+                    query, user_id, session_id, updater, cancel_signal
+                )
+            else:
+                await self._run_llm_flow(
+                    query, user_id, session_id, updater, cancel_signal
+                )
+        finally:
+            _cancel_signals.pop(task.id, None)
 
     async def _ensure_session(self, context: RequestContext) -> tuple[str, str]:
         user_id = 'a2a_user'
@@ -66,69 +96,89 @@ class DigiOpsAgentExecutor(AgentExecutor):
 
     async def _call_llm(
         self, query: str, user_id: str, session_id: str
-    ) -> AgentResponse | None:
+    ) -> tuple[AgentResponse | None, bool]:
         """Runs the real ADK Runner and parses its structured response.
-        Returns None if the model produced no final response or the
-        response didn't parse as the expected schema."""
+        Returns (None, False) if the model produced no final response or
+        the response didn't parse as the expected schema.
+
+        The second element is True iff create_ticket was actually called
+        during *this* run — detected from this call's own event stream
+        (Event.get_function_responses()), not from any shared state, so it
+        can't be confused with a different concurrent request's ticket."""
         content = types.Content(role='user', parts=[types.Part.from_text(text=query)])
         final_text = None
+        ticket_created = False
         async for event in self._runner.run_async(
             user_id=user_id, session_id=session_id, new_message=content
         ):
+            for func_response in event.get_function_responses():
+                if func_response.name == 'create_ticket':
+                    ticket_created = True
             if event.is_final_response() and event.content and event.content.parts:
                 final_text = event.content.parts[0].text
 
         if final_text is None:
-            return None
+            return None, ticket_created
         try:
-            return AgentResponse.model_validate_json(final_text.strip())
+            return AgentResponse.model_validate_json(final_text.strip()), ticket_created
         except ValueError:
-            return None
+            return None, ticket_created
 
     async def _run_llm_flow(
-        self, query: str, user_id: str, session_id: str, updater: TaskUpdater
+        self,
+        query: str,
+        user_id: str,
+        session_id: str,
+        updater: TaskUpdater,
+        cancel_signal: asyncio.Event,
     ) -> None:
         """FAQ Q&A and hardware-ticket handling — both go through the same
         real LLM tool-calling path, so there's no separate code branch for
         the two: the model decides whether to call create_ticket/get_ticket
         or just answer directly."""
         await updater.start_work()
-        response = await self._call_llm(query, user_id, session_id)
-        await self._resolve_from_response(updater, response)
+        response, ticket_created = await self._call_llm(query, user_id, session_id)
+        await self._resolve_from_response(updater, response, ticket_created, cancel_signal)
 
     async def _run_incident_flow(
-        self, query: str, user_id: str, session_id: str, updater: TaskUpdater
+        self,
+        query: str,
+        user_id: str,
+        session_id: str,
+        updater: TaskUpdater,
+        cancel_signal: asyncio.Event,
     ) -> None:
         """Staged progress narration (deterministic, executor-controlled) is
         purely how a real long-running investigation reports being alive —
         the actual diagnosis at the end always comes from a real LLM call.
         cancelTask can interrupt at any staged step."""
-        cancel_signal = asyncio.Event()
-        _cancel_signals[updater.task_id] = cancel_signal
-        try:
-            for step in _INVESTIGATION_STEPS:
-                await updater.start_work(
-                    message=updater.new_agent_message(parts=[new_text_part(step)])
-                )
-                try:
-                    await asyncio.wait_for(
-                        cancel_signal.wait(), timeout=_STEP_DELAY_SECONDS
-                    )
-                    return  # cancel() already handled the task-state transition
-                except asyncio.TimeoutError:
-                    pass
-
-            diagnosis_prompt = (
-                f'Investigate this reported incident and give a diagnosis '
-                f'and next step: {query}'
+        for step in _INVESTIGATION_STEPS:
+            await updater.start_work(
+                message=updater.new_agent_message(parts=[new_text_part(step)])
             )
-            response = await self._call_llm(diagnosis_prompt, user_id, session_id)
-            await self._resolve_from_response(updater, response)
-        finally:
-            _cancel_signals.pop(updater.task_id, None)
+            try:
+                await asyncio.wait_for(
+                    cancel_signal.wait(), timeout=_STEP_DELAY_SECONDS
+                )
+                return  # cancel() already handled the task-state transition
+            except asyncio.TimeoutError:
+                pass
+
+        diagnosis_prompt = (
+            f'Investigate this reported incident and give a diagnosis '
+            f'and next step: {query}'
+        )
+        response, ticket_created = await self._call_llm(
+            diagnosis_prompt, user_id, session_id
+        )
+        await self._resolve_from_response(updater, response, ticket_created, cancel_signal)
 
     async def _resolve_from_response(
-        self, updater: TaskUpdater, response: AgentResponse | None
+        self,
+        updater: TaskUpdater,
+        response: AgentResponse | None,
+        ticket_created: bool,
+        cancel_signal: asyncio.Event,
     ) -> None:
         if response is None:
             await updater.failed(
@@ -139,13 +189,44 @@ class DigiOpsAgentExecutor(AgentExecutor):
             return
 
         reply = updater.new_agent_message(parts=[new_text_part(response.message)])
-        if response.status == 'completed':
+        if response.status == 'completed' and ticket_created:
+            # A real ticket now exists (created above, for real, immediately
+            # — that part isn't staged). Real fulfillment still takes real
+            # time, so the *task* stays open/cancellable through it.
+            await self._run_provisioning_flow(updater, response.message, reply, cancel_signal)
+        elif response.status == 'completed':
             await updater.add_artifact(parts=[new_text_part(response.message)])
             await updater.complete(message=reply)
         elif response.status == 'input-required':
             await updater.requires_input(message=reply)
         else:
             await updater.failed(message=reply)
+
+    async def _run_provisioning_flow(
+        self,
+        updater: TaskUpdater,
+        message_text: str,
+        reply,
+        cancel_signal: asyncio.Event,
+    ) -> None:
+        """Staged, cancellable narration of real-world hardware fulfillment
+        after a real ticket was just created. Same shape as
+        _run_incident_flow: deterministic progress steps, real work (the
+        ticket) already done, cancelTask can interrupt at any step."""
+        for step in _PROVISIONING_STEPS:
+            await updater.start_work(
+                message=updater.new_agent_message(parts=[new_text_part(step)])
+            )
+            try:
+                await asyncio.wait_for(
+                    cancel_signal.wait(), timeout=_PROVISIONING_STEP_DELAY_SECONDS
+                )
+                return  # cancel() already handled the task-state transition
+            except asyncio.TimeoutError:
+                pass
+
+        await updater.add_artifact(parts=[new_text_part(message_text)])
+        await updater.complete(message=reply)
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         task = context.current_task

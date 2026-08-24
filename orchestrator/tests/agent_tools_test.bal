@@ -15,8 +15,24 @@
 // real answers these produced.
 import ballerina/os;
 import ballerina/test;
+import ballerina/uuid;
 
 final boolean hasRealKey = os:getEnv("ANTHROPIC_API_KEY") != "";
+
+// Pulls the real task id embedded in a delegateToAgent/getAgentTaskStatus
+// reply (see summarizeTask in agent_tools.bal: "... (task id: <id>)").
+isolated function extractTaskIdFromReply(string reply) returns string? {
+    int? startIdx = reply.indexOf("(task id: ");
+    if startIdx is () {
+        return ();
+    }
+    string tail = reply.substring(startIdx + "(task id: ".length());
+    int? endIdx = tail.indexOf(")");
+    if endIdx is () {
+        return ();
+    }
+    return tail.substring(0, endIdx);
+}
 
 @test:Config {}
 function testDiscoverAgents() returns error? {
@@ -116,4 +132,82 @@ function testListDigiOpsTasks() returns error? {
 function testListPayrollTasks() returns error? {
     string result = check listAgentTasks("Payroll");
     test:assertTrue(result.length() > 0, "expected a real, non-empty summary (even if it's just \"No tasks found.\")");
+}
+
+// The four tests below exercise the real long-running task lifecycle
+// (onboarding, hardware provisioning, Parking's reservation flow) added on
+// top of the discover-and-delegate tools. Onboarding/provisioning steps
+// default to ~200s each -- far longer than sendToAgent's own 20s poll
+// window (agent_tools.bal), so delegateToAgent is guaranteed to time out
+// into a real "still working" reply within ~20s, not the full ~10 minutes.
+// No env var override is needed for these two assertions specifically (a
+// shorter delay would actually make the "still WORKING" assertion racy,
+// since it could complete inside the 20s poll window instead).
+
+@test:Config {enable: hasRealKey}
+function testOnboardingStartsAsBackgroundTask() returns error? {
+    string employeeName = "Task Lifecycle Test " + uuid:createType4AsString();
+    string reply = check delegateToAgent("PeopleOperations", "onboard " + employeeName + " as a new hire");
+    test:assertFalse(reply.startsWith("[TASK_STATE_COMPLETED]"),
+            "onboarding takes real minutes -- it should not complete within the 20s poll window: " + reply);
+    string? taskId = extractTaskIdFromReply(reply);
+    test:assertTrue(taskId is string, "expected a real task id in the still-in-progress reply: " + reply);
+    if taskId is string {
+        string status = check getAgentTaskStatus("PeopleOperations", taskId);
+        test:assertTrue(status.startsWith("[TASK_STATE_WORKING]") || status.startsWith("[TASK_STATE_SUBMITTED]"),
+                "expected the task to genuinely still be in progress: " + status);
+    }
+}
+
+@test:Config {enable: hasRealKey}
+function testCancelOnboardingMidFlight() returns error? {
+    string employeeName = "Task Lifecycle Cancel Test " + uuid:createType4AsString();
+    string reply = check delegateToAgent("PeopleOperations", "onboard " + employeeName + " as a new hire");
+    string? taskId = extractTaskIdFromReply(reply);
+    test:assertTrue(taskId is string, "expected a real task id to cancel: " + reply);
+    if taskId is string {
+        string cancelResult = check cancelAgentTask("PeopleOperations", taskId);
+        test:assertTrue(cancelResult.startsWith("[TASK_STATE_CANCELED]"),
+                "expected a real CANCELED state after cancelling mid-flight: " + cancelResult);
+    }
+}
+
+@test:Config {enable: hasRealKey}
+function testHardwareProvisioningStartsAsBackgroundTask() returns error? {
+    string employeeName = "Task Lifecycle Test " + uuid:createType4AsString();
+    string reply = check delegateToAgent("DigiOps",
+            "I need a new docking station, my name is " + employeeName);
+    test:assertFalse(reply.startsWith("[TASK_STATE_COMPLETED]"),
+            "provisioning takes real minutes after the real ticket is created -- it should not complete within the 20s poll window: "
+            + reply);
+    string? taskId = extractTaskIdFromReply(reply);
+    test:assertTrue(taskId is string, "expected a real task id in the still-in-progress reply: " + reply);
+}
+
+@test:Config {enable: hasRealKey}
+function testCancelHardwareProvisioningMidFlight() returns error? {
+    string employeeName = "Task Lifecycle Cancel Test " + uuid:createType4AsString();
+    string reply = check delegateToAgent("DigiOps",
+            "I need a new docking station, my name is " + employeeName);
+    string? taskId = extractTaskIdFromReply(reply);
+    test:assertTrue(taskId is string, "expected a real task id to cancel: " + reply);
+    if taskId is string {
+        string cancelResult = check cancelAgentTask("DigiOps", taskId);
+        test:assertTrue(cancelResult.startsWith("[TASK_STATE_CANCELED]"),
+                "expected a real CANCELED state after cancelling mid-flight: " + cancelResult);
+    }
+}
+
+@test:Config {enable: hasRealKey}
+function testParkingReservationTaskCompletes() returns error? {
+    // Parking's own reservation delay is a real, short, non-configurable
+    // 4s (parking/agent_executor.py) -- comfortably inside the 20s poll
+    // window, so this exercises the actual Task/cancel/complete path
+    // (unlike testDelegateToParking's availability query, which stays in
+    // Message-mode and never creates a Task at all).
+    string employeeName = "Task Lifecycle Test " + uuid:createType4AsString();
+    string reply = check delegateToAgent("Parking",
+            "reserve spot A04 for " + employeeName);
+    test:assertTrue(reply.startsWith("[TASK_STATE_COMPLETED]") || reply.startsWith("[TASK_STATE_REJECTED]"),
+            "expected the reservation task to genuinely settle within the poll window: " + reply);
 }

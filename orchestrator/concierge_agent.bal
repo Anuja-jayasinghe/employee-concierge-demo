@@ -56,6 +56,12 @@ final ai:Agent concierge = check new (
             questions don't need a name. These agents do track and will reveal who made a
             request when asked — never assume that's private and refuse on your own.
 
+            Some requests take real time to finish — delegateToAgent may return while the
+            task is still SUBMITTED or WORKING rather than complete. Relay that real status
+            and the task id to the employee in plain language (never say it's finished when
+            it isn't), and reuse that same task id with getAgentTaskStatus if they later ask
+            whether it's done.
+
             No proactive notifications ("let me know when...") — only respond to what's asked.`
     },
     model = anthropicModel,
