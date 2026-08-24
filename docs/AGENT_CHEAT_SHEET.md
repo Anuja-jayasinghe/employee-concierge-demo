@@ -30,17 +30,18 @@ aren't a chat capability — that needs a webhook target of your own.
 
 ## A real, disclosed reliability quirk
 
-The chat occasionally re-calls an agent's tool several times for one
+The chat can occasionally re-call an agent's tool several times for one
 simple question, even when the first call already had a clear answer —
-confirmed non-deterministic (the exact same question can resolve
-cleanly in ~5 seconds on one try and take much longer, or fail
-outright, on another, with nothing else different). This is a real
-characteristic of the underlying LLM tool-calling loop, not a bug in
-this project's own code — reproduced it down to a single tool and a
-one-sentence prompt and it still happens sometimes. There's a bounded
-retry cap in place so a bad run fails fast with a clear error instead
-of hanging indefinitely; if a question fails this way, just ask it
-again.
+confirmed non-deterministic and not fixable by prompt wording alone
+(reproduced it down to a single tool and a one-sentence prompt and it
+still happened sometimes). Switching from twenty named tools to five
+generic ones (see `orchestrator/README.md`) measurably reduced how
+often this happens in re-testing, but didn't fully eliminate it — real
+architecture details in
+[GitHub issue #24](https://github.com/Anuja-jayasinghe/employee-concierge-demo/issues/24).
+There's a bounded retry cap in place so a bad run fails fast with a
+clear error instead of hanging indefinitely; if a question fails this
+way, just ask it again.
 
 ---
 

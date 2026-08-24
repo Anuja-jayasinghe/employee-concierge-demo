@@ -29,20 +29,26 @@ final ai:ModelProvider anthropicModel = check new anthropic:ModelProvider(
 final ai:Agent concierge = check new (
     systemPrompt = {
         role: "WSO2 Employee Concierge",
-        instructions: string `You route WSO2 employee requests to the right domain and relay
-            the real answer back. Five domains: Parking (spot availability, reservations),
-            DigiOps (IT tickets, incidents, VPN/password/hardware), PeopleOperations (HR
-            policy, onboarding), Payroll (payroll, payslip corrections), Travel & Expense
-            (travel policy, expense claims). If a request doesn't clearly belong to one of
-            these, say so instead of guessing.
+        instructions: string `You help WSO2 employees by delegating their requests to the right
+            real internal agent and relaying its real answer back. You don't have the agents'
+            names or capabilities memorized — call discoverAgents once, near the start of a
+            conversation (not before every request), to see each real agent's name,
+            description, and skills, and use that to decide which one fits a given request. If
+            none of them fit, say so instead of guessing.
 
-            Each domain has one ask tool (e.g. askParkingAgent) for any request in natural
-            language — availability, reservations, cancellations, status checks, listing,
-            who-did-what, everything. Call it exactly once per employee turn and answer from
-            what it actually returns; do not call it again for the same question, and do not
-            answer from your own assumptions instead of calling it. There is also a separate
-            cancel/status/list tool per domain (e.g. cancelParkingTask) for acting on a task
-            id from an earlier reply in this conversation.
+            delegateToAgent sends a *new* request, in natural language, to one agent by its
+            exact name from discoverAgents — a fresh reservation, ticket, claim, or question.
+            To cancel, check the status of, or ask about an *existing* request you already have
+            a task id for from earlier in this conversation, you MUST call cancelAgentTask or
+            getAgentTaskStatus directly with that agent name and task id — never send a
+            cancel/status request as natural-language text through delegateToAgent instead;
+            the target agent has no way to act on a cancel/status request phrased as a plain
+            message, only through those two dedicated tools. listAgentTasks lists everything an
+            agent has seen, by name, with no task id needed. For any of these four, call the
+            matching tool exactly once per employee turn and answer only from what it actually
+            returns — never guess, assume, or claim an outcome (including that something can't
+            be done, or already happened) without a real call to that tool in this same turn;
+            that is always wrong here, whichever way it's wrong.
 
             Reservations, tickets, corrections, and claims are tied to a real employee name.
             If you don't already have it from this conversation, ask for it before making the
@@ -53,24 +59,14 @@ final ai:Agent concierge = check new (
             No proactive notifications ("let me know when...") — only respond to what's asked.`
     },
     model = anthropicModel,
-    // A real, verified, pre-existing behavior of this model+framework
-    // combination, not something prompt wording or tool count control:
-    // the concierge sometimes re-calls an ask tool multiple times for one
-    // question even where the underlying tool result is unambiguous --
-    // reproduced this down to a single tool and a one-sentence prompt on a
-    // freshly started process, ruling out this project's own config as the
-    // cause. ai:Agent's own default maxIter (max(tools.length(), 10) = 20
-    // with the current 20 tools) let that tendency run for 100s+ on some
-    // real queries. A lower cap (tried 6, then 8) fails fast instead but
-    // was tight enough to reject some legitimate single-tool-call queries
-    // outright -- 15 is a real, tested middle ground: enough headroom for
-    // the observed redundant-call range without the old unbounded cost.
-    maxIter = 15,
-    tools = [
-        askParkingAgent, cancelParkingTask, getParkingTaskStatus, listParkingTasks,
-        askDigiOpsAgent, cancelDigiOpsTask, getDigiOpsTaskStatus, listDigiOpsTasks,
-        askPeopleOperationsAgent, cancelPeopleOperationsTask, getPeopleOperationsTaskStatus, listPeopleOperationsTasks,
-        askPayrollAgent, cancelPayrollTask, getPayrollTaskStatus, listPayrollTasks,
-        askTravelExpenseAgent, cancelTravelExpenseTask, getTravelExpenseTaskStatus, listTravelExpenseTasks
-    ]
+    // ai:Agent's own default maxIter is max(tools.length(), 10) -- down to
+    // 5 real generic tools instead of 20 named ones specifically to give
+    // the real, confirmed non-deterministic redundant-tool-call tendency
+    // documented in GitHub issue #24 less room to run; re-verified after
+    // this rewrite (see the issue for the real before/after numbers). Kept
+    // an explicit, tested cap rather than relying on the auto-scaled
+    // default, since the issue reproduced even with a single tool and
+    // isn't fully eliminated by tool count alone.
+    maxIter = 10,
+    tools = [discoverAgents, delegateToAgent, cancelAgentTask, getAgentTaskStatus, listAgentTasks]
 );
