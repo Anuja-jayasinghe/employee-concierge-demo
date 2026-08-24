@@ -9,6 +9,8 @@ transport binding the client supports.
 - [Implementation plan](docs/implementation-plan.md) — phased build plan, review this.
 - [Naming](NAMING.md) — generic names vs. confirmed WSO2 internal names.
 - [Research](docs/research/) — architectural questions settled with real evidence.
+- [Running the agents](docs/RUNNING_THE_AGENTS.md) — start everything, local or Docker, before testing the client.
+- [Agent cheat sheet](docs/AGENT_CHEAT_SHEET.md) — what each agent can actually do once it's up.
 
 Status: Phases 1–13 complete — all five agents, the orchestrator, the
 push-notification webhook receiver, local and Docker Compose bring-up,
