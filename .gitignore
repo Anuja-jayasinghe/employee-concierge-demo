@@ -40,6 +40,12 @@ trace_enabled.bal
 /logs/
 /.pids/
 
+# scripts/watch-agents-local.sh / watch-agents-docker.sh runtime state —
+# generated per-agent runner scripts, regenerated on every run. The
+# local variant bakes ANTHROPIC_API_KEY into these files, so this must
+# never be committed.
+/.watch-agents/
+
 # Docker build staging — populated fresh from the local Ballerina
 # repository by orchestrator/prepare-docker-build.sh before each image
 # build, never committed (it's a copy of a2a-ballerina's own build

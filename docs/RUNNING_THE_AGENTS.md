@@ -154,3 +154,23 @@ ready for the orchestrator to talk to.
 
 For what each agent can actually *do* once it's up, see
 [`AGENT_CHEAT_SHEET.md`](AGENT_CHEAT_SHEET.md).
+
+## Watching every agent work, live
+
+Want to actually *see* each agent receive a task, work on it, and send
+the response back, instead of just knowing it's running? Both modes
+have a script that opens one Terminal.app window per agent (macOS
+only) so each window shows that agent's own live output:
+
+```sh
+./scripts/watch-agents-local.sh    # local processes — starts them itself
+./scripts/watch-agents-docker.sh   # Docker — watches an already-running stack
+```
+
+`watch-agents-local.sh` starts all six processes itself (building each
+one first if needed) — don't run `start-all.sh` first, it'd just
+conflict on the same ports. `watch-agents-docker.sh` only tails logs —
+run `docker compose up -d --build --wait` first.
+
+First run may prompt macOS for permission to let Terminal be
+controlled by scripts — allow it, that's what opens the windows.
