@@ -26,70 +26,78 @@ package specifically because of it.
 
 ## Run it
 
-All five downstream agents must be reachable first — module init resolves
-all five real Agent Cards at startup, so the orchestrator fails to boot
-if any one of them isn't up (see `agent_tools.bal`), **no matter what
-starts the orchestrator** — a bare `bal run`, `scripts/start-all.sh`, or
-BI's own Run/Debug button all hit the same requirement:
+No downstream agent needs to be up for the orchestrator itself to boot —
+`agent_tools.bal` resolves a real `a2a:Client` for an agent only when
+something actually delegates to it, not eagerly at module init (this
+used to not be true; see the "Discover-and-delegate" note below).
+Verified directly: booted the orchestrator with zero downstream agents
+running and it still answered chat requests, failing gracefully only on
+the specific agent it couldn't reach.
 
 ```sh
-../scripts/start-agents.sh      # brings up all five, then stops (no orchestrator)
 export ANTHROPIC_API_KEY=...    # required for real routing / real answers
 bal run --sticky
 ```
 
-Running through WSO2 Integrator: BI instead of `bal run --sticky`? Same
-prerequisite — run `scripts/start-agents.sh` from a terminal first, *then*
-use BI's Run/Debug or chat panel on `orchestrator/`. Skipping that step is
-exactly what produces BI's `error: Something wrong with the connection` —
-it isn't a BI-compatibility issue, it's this same reachability requirement
-surfacing through a different launcher.
+For a real demo you obviously still want the five agents actually up —
+`../scripts/start-agents.sh` brings up all five (then stops, leaving the
+orchestrator for you to run/debug separately, including from WSO2
+Integrator: BI's Run/Debug button or chat panel).
 
-Without `ANTHROPIC_API_KEY`, the orchestrator still boots and holds all
-five real downstream connections, but any real routing request fails
-gracefully with a typed error — verified, see below.
+Without `ANTHROPIC_API_KEY`, the orchestrator still boots, but any real
+routing request fails gracefully with a typed error — verified, see
+below.
 
 ## What it does
 
 - **`concierge` (`ai:Agent`)** — the real routing layer. Given a natural-language
-  employee request, the real Anthropic model picks which of the five real
-  tools to call and relays the real target agent's answer back. Full
-  routing verification (does it pick the right tool) is Phase 9's job,
+  employee request, the real Anthropic model discovers the real downstream
+  agents, picks the right one, and relays its real answer back. Full
+  routing verification (does it pick the right agent) is Phase 9's job,
   once a real key is supplied.
 - **`POST /concierge/chat` (`chat_service.bal`)** — `concierge` exposed on
   an `ai:Listener` (port 8090) as a real `ai:ChatService`, so it can be
   chatted with directly (`{"sessionId": "...", "message": "..."}` in,
   `{"message": "..."}` out) and, per below, driven from WSO2 Integrator:
   BI's chat panel.
-- **Twenty tool functions (`agent_tools.bal`)**, four per agent (Parking,
-  DigiOps, PeopleOperations, Payroll, Travel & Expense): `askXAgent` for a
-  new request, `cancelXTask`/`getXTaskStatus`/`listXTasks` for a real
-  cancelTask/getTask/listTasks call against an existing one. Each agent
-  holds its own reusable `ballerina/a2a` `Client`, resolved against the
-  real target's Agent Card once at module init — real client, real card,
-  real target agent, no bypass. `askXAgent` replies now include the real
-  task id (e.g. "(task id: abc-123)") when the result is a `Task`, so
-  `concierge`'s own conversation memory lets it call the matching
-  cancel/status tool on a later turn without the employee repeating the
-  id. Push-notification config CRUD is deliberately not exposed as a chat
-  tool — it doesn't map to a synchronous request/reply turn, and support
-  for it is asymmetric across the five agents anyway. All twenty are
-  directly callable and independently testable without the AI layer at
-  all.
+- **Discover-and-delegate (`agent_tools.bal`)** — five generic tools, not
+  one named tool per agent per operation: `discoverAgents` resolves every
+  known agent's real `AgentCard` (name, description, skills) on demand,
+  so `concierge` reads real capabilities instead of hand-written
+  per-agent docstrings; `delegateToAgent(agentName, message)` sends a new
+  request to whichever agent the model picked;
+  `cancelAgentTask`/`getAgentTaskStatus`/`listAgentTasks(agentName, ...)`
+  act on an existing task by id, or list everything an agent's seen.
+  Mirrors the real pattern WSO2 Integrator: BI itself generates (see
+  `~/WSO2Integrator/wso2-integrator-a2a/a2ademoassistant/functions.bal`)
+  rather than the twenty named functions this replaced. A real
+  `a2a:Client` per agent is created and cached lazily, on first actual
+  use — not eagerly for all five at module init the way it used to be,
+  so **no downstream agent needs to be up for the orchestrator itself to
+  boot** (verified: booted with zero agents running, chat still answered,
+  failing gracefully only on the specific agent asked about). `delegateToAgent`
+  replies include the real task id (e.g. "(task id: abc-123)") when the
+  result is a `Task`, so `concierge`'s own conversation memory lets it
+  call the matching cancel/status tool on a later turn. Push-notification
+  config CRUD is deliberately not exposed as a chat tool — it doesn't map
+  to a synchronous request/reply turn, and support for it is asymmetric
+  across the five agents anyway. All five tools are directly callable and
+  independently testable without the AI layer at all.
 - **Employee identity** — write actions (reservations, tickets, corrections,
-  claims) are tied to a real employee name now: `concierge`'s system prompt
+  claims) are tied to a real employee name: `concierge`'s system prompt
   asks for it if missing and reuses it for the rest of the conversation;
-  Parking and DigiOps gained real `reserved_by`/`raised_by` fields to
-  back it (Payroll and Travel & Expense already had `employeeName` fields
-  from the start). "Who reserved/raised/filed X" is a real, answerable
-  question now.
-- **`maxIter = 15`** — `ai:Agent`'s own default scales with tool count
-  (`max(tools.length(), 10)`, so 20 here); left uncapped, a real,
-  confirmed-non-deterministic tendency of this model+framework combo to
-  re-call an ask tool several times for one question can run past 100s.
-  Capping it bounds the worst case; see `concierge_agent_test.bal`'s
-  comment on `testConciergeAgent` for how this was verified, including a
-  same-code pass/fail on back-to-back runs.
+  Parking and DigiOps have real `reserved_by`/`raised_by` fields backing
+  it (Payroll and Travel & Expense already had `employeeName` fields from
+  the start). "Who reserved/raised/filed X" is a real, answerable
+  question.
+- **`maxIter = 10`** — `ai:Agent`'s own default scales with tool count
+  (`max(tools.length(), 10)`); a real, confirmed-non-deterministic
+  tendency of this model+framework combo to occasionally re-call a tool
+  several times for one question is documented in GitHub issue #24 —
+  dropping from twenty named tools to five generic ones (this file)
+  measurably reduced it in re-testing (see the issue's own follow-up
+  comment), though it isn't fully eliminated, so an explicit cap stays in
+  place rather than relying on the auto-scaled default.
 
 - **`POST /webhooks/push`** — accepts a real push-notification delivery
   from any agent's `PushNotificationSender`. Handles both wire shapes
@@ -176,9 +184,11 @@ cd orchestrator
 bal test --sticky
 ```
 
-`tests/agent_tools_test.bal` calls each of the five tool functions
-directly — all five are real LLM-backed agents, so each is asserted for
-real content with a key present, and graceful failure without one.
+`tests/agent_tools_test.bal` calls `delegateToAgent` against each of
+the five real agents directly, plus `discoverAgents` and the
+cancel/status/list tools — all five downstream agents are real
+LLM-backed agents, so each `delegateToAgent` call is asserted for real
+content with a key present, and graceful failure without one.
 `tests/concierge_agent_test.bal` does the same for the real `ai:Agent`
 itself. Every check here runs against real, live agent processes over the
 real `ballerina/a2a` wire — nothing here is mocked, only the *invocation
