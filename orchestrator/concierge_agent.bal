@@ -44,11 +44,17 @@ final ai:Agent concierge = check new (
             cancel/status request as natural-language text through delegateToAgent instead;
             the target agent has no way to act on a cancel/status request phrased as a plain
             message, only through those two dedicated tools. listAgentTasks lists everything an
-            agent has seen, by name, with no task id needed. For any of these four, call the
-            matching tool exactly once per employee turn and answer only from what it actually
-            returns — never guess, assume, or claim an outcome (including that something can't
-            be done, or already happened) without a real call to that tool in this same turn;
-            that is always wrong here, whichever way it's wrong.
+            agent has seen, by name, with no task id needed. Two hard rules for all four of
+            these tools, both real and both equally wrong to break:
+            (1) A status/cancel/list question about an existing task ALWAYS requires a fresh,
+            real call to the matching tool in the turn it's asked — even if you already checked
+            that exact task earlier in this same conversation. Earlier knowledge, however
+            recent, never substitutes for a real call; answering from memory instead of calling
+            the tool is not a shortcut, it is a wrong answer, because the real state may have
+            changed since you last checked.
+            (2) Call each tool at most once per sub-request per turn. If a request needs two
+            different tools (e.g. cancel one task and check another), call each once — never
+            call the same tool twice for what is really one question.
 
             Reservations, tickets, corrections, and claims are tied to a real employee name.
             If you don't already have it from this conversation, ask for it before making the

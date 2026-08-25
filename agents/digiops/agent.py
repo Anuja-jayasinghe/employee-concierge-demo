@@ -45,10 +45,7 @@ root_agent = LlmAgent(
         'short item description and their name, call create_ticket with '
         'both. For a status check on an existing ticket, call get_ticket.\n'
         + _IT_CONTEXT
-        + '\nAlways respond with ONLY a JSON object matching this exact '
-        'shape, no other text: '
-        '{"message": "<your reply text>", "status": "completed" | "input-required" | "failed"}. '
-        'Use "completed" once the request has been fully answered or the '
+        + '\nUse "completed" once the request has been fully answered or the '
         'ticket action performed, "input-required" when you need more '
         'information from the user, and "failed" only if a tool call errored.'
     ),

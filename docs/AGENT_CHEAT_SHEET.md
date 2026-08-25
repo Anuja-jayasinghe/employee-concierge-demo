@@ -30,15 +30,29 @@ aren't a chat capability — that needs a webhook target of your own.
 
 ## A real, disclosed reliability quirk
 
-The chat can occasionally re-call an agent's tool several times for one
-simple question, even when the first call already had a clear answer —
+The chat's tool-calling can misbehave in two different directions, both
 confirmed non-deterministic and not fixable by prompt wording alone
-(reproduced it down to a single tool and a one-sentence prompt and it
-still happened sometimes). Switching from twenty named tools to five
-generic ones (see `orchestrator/README.md`) measurably reduced how
-often this happens in re-testing, but didn't fully eliminate it — real
-architecture details in
-[GitHub issue #24](https://github.com/Anuja-jayasinghe/multi-agent-a2a-demo/issues/24).
+(each reproduced down to a single tool and a one-sentence prompt and it
+still happened sometimes) — real architecture details in
+[GitHub issue #24](https://github.com/Anuja-jayasinghe/multi-agent-a2a-demo/issues/24):
+
+- **Redundant repeat** — occasionally re-calls a tool several times for
+  one simple question, even when the first call already had a clear
+  answer. Switching from twenty named tools to five generic ones (see
+  `orchestrator/README.md`) measurably reduced how often this happens
+  in re-testing, but didn't fully eliminate it.
+- **Skipped call** — occasionally answers a status/cancel/list question
+  from earlier conversation context instead of making the required
+  fresh tool call, effectively repeating a stale answer as if it were
+  current. Confirmed live in a real chat session (a status check for an
+  in-progress onboarding was answered from memory, then a genuine
+  cancel attempt on the same task correctly failed because the task had
+  actually finished by then — the two replies looked contradictory, but
+  the real cause was the skipped status check, not a cancellation bug).
+  The system prompt now states this as two explicit rules rather than
+  one combined sentence, to give the model less room to satisfy the
+  letter of the guardrail while missing one direction of it.
+
 There's a bounded retry cap in place so a bad run fails fast with a
 clear error instead of hanging indefinitely; if a question fails this
 way, just ask it again.
