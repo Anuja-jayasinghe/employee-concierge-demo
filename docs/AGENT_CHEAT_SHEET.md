@@ -163,12 +163,19 @@ Payslip questions, corrections, pay history, and tax documents.
 ---
 
 ## Travel & Expense
-Travel policy questions and expense claims.
+Travel policy questions, per-diem calculations, and expense claims.
 
 ✅ Ask:
 - "what's the per-diem rate?"
-- "I spent $50 on a taxi for a client meeting" (asks your name, then files a real claim with an ID)
-- "what's the status of my claim?" / "cancel it"
+- "what's the per diem for 4 days in Europe?" (a real calculation via
+  `calculatePerDiem`, not just the quoted rate)
+- "I spent 45.50 USD on a taxi to the airport, my name is X" (a real,
+  structured amount + currency, not a free-text blob -- files a claim
+  with an ID that resolves fast, since it's an ordinary expense)
+- "I spent 120 USD on a client dinner, my name is X" (client entertainment
+  genuinely triggers a staged manager review before it's approved -- an
+  honest status check on it may still say `in_review` for a while)
+- "what's the status of my claim?" (always a fresh, real check) / "cancel it"
 - "what claims have been filed?"
 
 ❌ Can't:
