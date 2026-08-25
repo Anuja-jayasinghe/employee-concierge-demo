@@ -10,6 +10,7 @@ from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
 
 from agent import AgentResponse
+from tickets import mark_fulfilled
 
 _INCIDENT_KEYWORDS = ('incident', 'outage', 'cannot reach', "can't reach", 'down')
 
@@ -96,33 +97,35 @@ class DigiOpsAgentExecutor(AgentExecutor):
 
     async def _call_llm(
         self, query: str, user_id: str, session_id: str
-    ) -> tuple[AgentResponse | None, bool]:
+    ) -> tuple[AgentResponse | None, dict | None]:
         """Runs the real ADK Runner and parses its structured response.
-        Returns (None, False) if the model produced no final response or
-        the response didn't parse as the expected schema.
+        Returns (None, None) if the model produced no final response or the
+        response didn't parse as the expected schema.
 
-        The second element is True iff create_ticket was actually called
-        during *this* run — detected from this call's own event stream
-        (Event.get_function_responses()), not from any shared state, so it
-        can't be confused with a different concurrent request's ticket."""
+        The second element is create_ticket's own real return value (ticket
+        id, item, status, over_catalog, severity) iff it was actually
+        called during *this* run — detected from this call's own event
+        stream (Event.get_function_responses()), not from any shared
+        state, so it can't be confused with a different concurrent
+        request's ticket."""
         content = types.Content(role='user', parts=[types.Part.from_text(text=query)])
         final_text = None
-        ticket_created = False
+        ticket_info: dict | None = None
         async for event in self._runner.run_async(
             user_id=user_id, session_id=session_id, new_message=content
         ):
             for func_response in event.get_function_responses():
                 if func_response.name == 'create_ticket':
-                    ticket_created = True
+                    ticket_info = func_response.response
             if event.is_final_response() and event.content and event.content.parts:
                 final_text = event.content.parts[0].text
 
         if final_text is None:
-            return None, ticket_created
+            return None, ticket_info
         try:
-            return AgentResponse.model_validate_json(final_text.strip()), ticket_created
+            return AgentResponse.model_validate_json(final_text.strip()), ticket_info
         except ValueError:
-            return None, ticket_created
+            return None, ticket_info
 
     async def _run_llm_flow(
         self,
@@ -137,8 +140,8 @@ class DigiOpsAgentExecutor(AgentExecutor):
         the two: the model decides whether to call create_ticket/get_ticket
         or just answer directly."""
         await updater.start_work()
-        response, ticket_created = await self._call_llm(query, user_id, session_id)
-        await self._resolve_from_response(updater, response, ticket_created, cancel_signal)
+        response, ticket_info = await self._call_llm(query, user_id, session_id)
+        await self._resolve_from_response(updater, response, ticket_info, cancel_signal)
 
     async def _run_incident_flow(
         self,
@@ -168,16 +171,16 @@ class DigiOpsAgentExecutor(AgentExecutor):
             f'Investigate this reported incident and give a diagnosis '
             f'and next step: {query}'
         )
-        response, ticket_created = await self._call_llm(
+        response, ticket_info = await self._call_llm(
             diagnosis_prompt, user_id, session_id
         )
-        await self._resolve_from_response(updater, response, ticket_created, cancel_signal)
+        await self._resolve_from_response(updater, response, ticket_info, cancel_signal)
 
     async def _resolve_from_response(
         self,
         updater: TaskUpdater,
         response: AgentResponse | None,
-        ticket_created: bool,
+        ticket_info: dict | None,
         cancel_signal: asyncio.Event,
     ) -> None:
         if response is None:
@@ -189,11 +192,20 @@ class DigiOpsAgentExecutor(AgentExecutor):
             return
 
         reply = updater.new_agent_message(parts=[new_text_part(response.message)])
-        if response.status == 'completed' and ticket_created:
+        if response.status == 'completed' and ticket_info is not None:
             # A real ticket now exists (created above, for real, immediately
-            # — that part isn't staged). Real fulfillment still takes real
-            # time, so the *task* stays open/cancellable through it.
-            await self._run_provisioning_flow(updater, response.message, reply, cancel_signal)
+            # — that part isn't staged). Only an over-catalog request needs
+            # real staged manager approval; a standard-catalog item (laptop,
+            # monitor, docking station, headset) fulfills fast, as a real
+            # request genuinely would.
+            if ticket_info.get('over_catalog'):
+                await self._run_provisioning_flow(
+                    updater, ticket_info['ticket_id'], response.message, reply, cancel_signal
+                )
+            else:
+                mark_fulfilled(ticket_info['ticket_id'])
+                await updater.add_artifact(parts=[new_text_part(response.message)])
+                await updater.complete(message=reply)
         elif response.status == 'completed':
             await updater.add_artifact(parts=[new_text_part(response.message)])
             await updater.complete(message=reply)
@@ -205,12 +217,13 @@ class DigiOpsAgentExecutor(AgentExecutor):
     async def _run_provisioning_flow(
         self,
         updater: TaskUpdater,
+        ticket_id: str,
         message_text: str,
         reply,
         cancel_signal: asyncio.Event,
     ) -> None:
         """Staged, cancellable narration of real-world hardware fulfillment
-        after a real ticket was just created. Same shape as
+        after a real over-catalog ticket was just created. Same shape as
         _run_incident_flow: deterministic progress steps, real work (the
         ticket) already done, cancelTask can interrupt at any step."""
         for step in _PROVISIONING_STEPS:
@@ -225,6 +238,7 @@ class DigiOpsAgentExecutor(AgentExecutor):
             except asyncio.TimeoutError:
                 pass
 
+        mark_fulfilled(ticket_id)
         await updater.add_artifact(parts=[new_text_part(message_text)])
         await updater.complete(message=reply)
 
