@@ -7,5 +7,15 @@ package com.wso2.employeeconcierge.payroll;
  *
  * @param message reply text for the employee -- the only thing they ever see
  * @param status one of "completed", "input-required", "failed"
+ * @param correctionEmployeeName set only when the employee clearly wants to file a NEW payslip
+ *     correction and has given their real name -- null otherwise. The executor (not a tool call)
+ *     files the real correction request and drives its staged review, mirroring how Parking's
+ *     executor -- not the LLM -- creates the real reservation from structured fields like these.
+ * @param correctionDescription what's wrong with the payslip, set only alongside
+ *     correctionEmployeeName
  */
-public record AgentResponse(String message, String status) {}
+public record AgentResponse(
+    String message,
+    String status,
+    String correctionEmployeeName,
+    String correctionDescription) {}
