@@ -140,13 +140,21 @@ Leave policy, benefits, new-hire onboarding, offboarding, and leave filing.
 ---
 
 ## Payroll
-Payslip questions and corrections.
+Payslip questions, corrections, pay history, and tax documents.
 
 ✅ Ask:
 - "when is the next pay date?"
-- "my payslip has the wrong amount" (asks your name, then files a real correction request with an ID)
-- "what's the status of my correction?" / "cancel it"
+- "my payslip has the wrong amount" (asks your name, then files a real
+  correction request with an ID -- it then genuinely goes through a
+  staged review, `submitted` → `in_review` → `approved`, not an instant
+  fake approval)
+- "what's the status of my correction?" (a real, honest `in_review`
+  answer while it's still being reviewed) / "cancel it" (a real
+  mid-review cancel)
 - "what corrections have been filed?"
+- "what's my pay history?" (a real 3-month lookup)
+- "I need my tax certificate for 2025" (a real tax-document request with
+  a reference number)
 
 ❌ Can't:
 - Adjust someone *else's* payroll — that's an admin-only skill the orchestrator
