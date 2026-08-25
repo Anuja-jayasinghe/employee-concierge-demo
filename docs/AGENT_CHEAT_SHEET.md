@@ -38,7 +38,7 @@ still happened sometimes). Switching from twenty named tools to five
 generic ones (see `orchestrator/README.md`) measurably reduced how
 often this happens in re-testing, but didn't fully eliminate it — real
 architecture details in
-[GitHub issue #24](https://github.com/Anuja-jayasinghe/employee-concierge-demo/issues/24).
+[GitHub issue #24](https://github.com/Anuja-jayasinghe/multi-agent-a2a-demo/issues/24).
 There's a bounded retry cap in place so a bad run fails fast with a
 clear error instead of hanging indefinitely; if a question fails this
 way, just ask it again.

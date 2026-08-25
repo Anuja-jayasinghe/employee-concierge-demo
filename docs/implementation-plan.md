@@ -8,7 +8,7 @@ was actually built and verified.
 
 | Decision | Answer |
 |---|---|
-| Repo | Monorepo, public — `github.com/Anuja-jayasinghe/employee-concierge-demo` |
+| Repo | Monorepo, public — `github.com/Anuja-jayasinghe/multi-agent-a2a-demo` (renamed from `employee-concierge-demo`) |
 | LLM provider | Anthropic Claude, all agents and the orchestrator |
 | MCP | Out of scope. Every agent's data is mocked and reached through plain tool functions |
 | Deployment | Local processes first (manual rough-check pass), Docker Compose once that's verified and reviewed |
