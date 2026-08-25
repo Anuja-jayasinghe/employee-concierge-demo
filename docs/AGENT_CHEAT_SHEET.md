@@ -82,14 +82,21 @@ VPN, password resets, hardware requests, and IT incidents.
 
 ✅ Ask:
 - "how do I reset my VPN password?"
-- "I need a new laptop charger" (asks your name, then opens a real ticket
-  with an ID — the ticket itself is created right away, but the request
-  then genuinely takes ~10 real minutes to work through approval and
-  fulfillment, staying open the whole time)
+- "I need a new laptop" (standard catalog — laptop, monitor, docking
+  station, headset — fulfills fast, no staged wait, matching what a real
+  in-stock request would do)
+- "I need a new laptop charger" (outside the standard catalog — opens a
+  real ticket with an ID, then genuinely takes ~10 real minutes to work
+  through manager approval and fulfillment, staying open the whole time;
+  the ticket itself is created right away)
 - "who raised ticket X?"
 - "what's the status of that ticket?" (recalls the id from the conversation
   — while it's still being fulfilled, this gives a real "still working"
   answer, not a fake instant "done")
+- "list all my tickets" (real per-employee lookup via `list_my_tickets`,
+  not just everyone's)
+- "close ticket X, I got the item" (a real status change, not cosmetic —
+  tickets otherwise stay frozen at their fulfilled/pending state forever)
 - "cancel that ticket" (a real mid-fulfillment cancel, not just deleting a
   record)
 - "my laptop can't reach the internal network" (investigates, gives a diagnosis)
