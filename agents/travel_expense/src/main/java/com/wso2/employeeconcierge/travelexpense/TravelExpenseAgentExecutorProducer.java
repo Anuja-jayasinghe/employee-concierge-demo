@@ -40,14 +40,30 @@ public final class TravelExpenseAgentExecutorProducer {
       emitter.startWork();
 
       final String userInput = context.getUserInput();
-      // A real Anthropic call: the model itself decides, via its own tool
+      // memoryId keyed by the real A2A contextId, not taskId -- same
+      // per-conversation granularity the three Python agents already get
+      // for free from their own framework's session store. A real
+      // Anthropic call: the model itself decides, via its own tool
       // calling, whether this is an expense claim (fileExpenseClaim), a
       // status check (getClaimStatus), or a plain policy FAQ answered from
       // the system prompt's reference facts — same shared-path pattern as
       // Payroll/DigiOps/PeopleOperations.
-      final String response = agent.respond(userInput);
+      final AgentResponse response = agent.respond(context.getContextId(), userInput);
+      final List<Part<?>> parts = List.of(new TextPart(response.message(), null));
 
-      final List<Part<?>> parts = List.of(new TextPart(response, null));
+      if ("input-required".equals(response.status())) {
+        // Genuinely pause and wait for the missing info -- this used to
+        // always force-complete here even for a clarifying question, so
+        // the task lied about being done. A follow-up message for the
+        // same taskId/contextId resumes normally now that real memory
+        // (above) actually carries the conversation forward.
+        emitter.requiresInput(emitter.newAgentMessage(parts, null));
+        return;
+      }
+      if ("failed".equals(response.status())) {
+        emitter.fail(emitter.newAgentMessage(parts, null));
+        return;
+      }
       emitter.addArtifact(parts, null, null, null);
       emitter.complete();
     }

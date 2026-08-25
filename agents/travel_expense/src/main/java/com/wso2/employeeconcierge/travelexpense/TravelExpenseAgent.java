@@ -1,5 +1,6 @@
 package com.wso2.employeeconcierge.travelexpense;
 
+import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import io.quarkiverse.langchain4j.RegisterAiService;
@@ -36,6 +37,15 @@ public interface TravelExpenseAgent {
 
       For general travel/expense policy questions, answer directly from the
       reference facts above — do not call a tool.
+
+      Set status to "input-required" when you need more information from
+      the employee before you can proceed (e.g. their name is missing) --
+      the conversation genuinely pauses here and resumes on their next
+      message, so do not guess or invent what's missing. Set status to
+      "completed" once the question is fully answered or the tool action
+      performed. Set status to "failed" only if a tool call errored. The
+      message field is the only thing the employee will ever see -- put
+      your real reply in it in full.
       """)
-  String respond(@UserMessage String message);
+  AgentResponse respond(@MemoryId String memoryId, @UserMessage String message);
 }
