@@ -94,11 +94,16 @@ below.
   working, task id: X" reply `summarizeTask` already produces. This is why
   even fast agents now take one extra quick round trip instead of a single
   blocking call — content is unaffected either way.
-  Payroll's payslip-correction review is the same real staged pattern
-  (`PAYROLL_REVIEW_STEP_DELAY_SECONDS`), Java rather than Python.
+  Payroll's payslip-correction review and Travel & Expense's
+  client-entertainment claim review are the same real staged pattern
+  (`PAYROLL_REVIEW_STEP_DELAY_SECONDS`, `TRAVELEXPENSE_REVIEW_STEP_DELAY_SECONDS`),
+  Java rather than Python — an ordinary (non-entertainment) expense claim
+  skips the staged wait entirely and resolves fast, same catalog-vs-approval
+  split as DigiOps' hardware provisioning.
   Each agent's own step-delay env var
   (`ONBOARDING_STEP_DELAY_SECONDS`, `OFFBOARDING_STEP_DELAY_SECONDS`,
-  `HARDWARE_PROVISIONING_STEP_DELAY_SECONDS`, `PAYROLL_REVIEW_STEP_DELAY_SECONDS`
+  `HARDWARE_PROVISIONING_STEP_DELAY_SECONDS`, `PAYROLL_REVIEW_STEP_DELAY_SECONDS`,
+  `TRAVELEXPENSE_REVIEW_STEP_DELAY_SECONDS`
   — all default ~200s × steps) is read once at that agent process's
   start. **Setting it in the shell you happen to run `bal test`
   or `curl` from does nothing** — it only takes effect if set in `.env`
