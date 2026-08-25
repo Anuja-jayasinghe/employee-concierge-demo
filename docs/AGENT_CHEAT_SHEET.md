@@ -60,20 +60,26 @@ way, just ask it again.
 ---
 
 ## Parking
-Spot availability and reservations at WSO2 Colombo HQ.
+Spot availability and reservations at WSO2 Colombo HQ — day-scoped, so a
+spot free today may be taken tomorrow and vice versa.
 
 ✅ Ask:
-- "is anything free?" / "is there any parking available?"
-- "is spot A01 free?"
-- "reserve spot A01" (it'll ask your name first, if it doesn't have it)
+- "is anything free?" / "is there any parking available?" (defaults to today)
+- "is spot A01 free tomorrow?" (a spot's status is genuinely per-day, not global)
+- "reserve spot A01 for tomorrow" (it'll ask your name first, if it doesn't
+  have it; defaults to today if no date is given)
 - "reserve me a spot on level 2" (it'll ask which exact spot too)
-- "who reserved spot A02?"
-- "cancel that" (right after a reservation, in the same conversation)
+- "who reserved spot A02 today?"
+- "cancel that" (right after a reservation, in the same conversation —
+  works while it's still pending)
+- "list my reservations" (a real per-employee lookup, across all dates)
+- "cancel my A03 reservation" (a real cancel for an already-completed
+  reservation, genuinely frees the spot back up for that date — not just
+  the mid-flight `cancelTask` above)
 - "what have I reserved so far?" (lists every reservation attempt, not just yours)
 
 ❌ Can't:
 - Reserve more than one spot in a single message
-- Cancel a reservation that's already gone through — only a still-pending one
 
 ---
 

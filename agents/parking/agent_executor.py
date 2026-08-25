@@ -15,7 +15,7 @@ from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
 
 from agent import AgentResponse
-from data import find_mentioned_spot
+from data import create_reservation, find_mentioned_spot, is_free, resolve_date
 
 # Word-boundary match on the imperative verb only -- a plain substring check
 # on "reserve"/"book" also matches "reserved"/"booked" in a purely
@@ -81,9 +81,12 @@ class ParkingAgentExecutor(AgentExecutor):
             )
             return
 
+        on_date = resolve_date(response.reservation_date or 'today')
         await updater.start_work(
             message=updater.new_agent_message(
-                parts=[new_text_part(f'Checking spot {spot.spot_id} with facilities...')]
+                parts=[new_text_part(
+                    f'Checking spot {spot.spot_id} for {on_date.isoformat()} with facilities...'
+                )]
             )
         )
 
@@ -100,20 +103,25 @@ class ParkingAgentExecutor(AgentExecutor):
             except asyncio.TimeoutError:
                 pass  # Not canceled — proceed to resolve the reservation.
 
-            if not spot.free:
+            if not is_free(spot.spot_id, on_date):
                 await updater.reject(
                     message=updater.new_agent_message(
-                        parts=[new_text_part(f'Spot {spot.spot_id} is already taken.')]
+                        parts=[new_text_part(
+                            f'Spot {spot.spot_id} is already taken on {on_date.isoformat()}.'
+                        )]
                     )
                 )
                 return
 
-            spot.free = False
-            spot.reserved_by_task_id = task.id
-            spot.reserved_by = response.employee_name
+            reservation = create_reservation(
+                spot.spot_id, on_date, response.employee_name, task.id
+            )
             await updater.complete(
                 message=updater.new_agent_message(
-                    parts=[new_text_part(f'Spot {spot.spot_id} reserved for {spot.reserved_by}.')]
+                    parts=[new_text_part(
+                        f'Spot {spot.spot_id} reserved for {reservation.employee_name} on '
+                        f'{on_date.isoformat()} (reservation id: {reservation.reservation_id}).'
+                    )]
                 )
             )
         finally:
