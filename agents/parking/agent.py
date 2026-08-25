@@ -99,11 +99,7 @@ root_agent = LlmAgent(
         'name yet, ask a real clarifying question for whichever is missing '
         'and leave reserve_spot_id/employee_name null -- do not guess or '
         'pick one for them.\n\n'
-        'Always respond with ONLY a JSON object matching this exact shape, '
-        'no other text: {"message": "<your reply text>", "status": '
-        '"completed" | "input-required" | "failed", "reserve_spot_id": '
-        '"<spot id>" | null, "employee_name": "<name>" | null}. Use '
-        '"completed" once the request has been fully answered, '
+        'Use "completed" once the request has been fully answered, '
         '"input-required" when you need more information from the user, '
         'and "failed" only if a tool call errored.'
     ),
