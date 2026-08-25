@@ -101,7 +101,7 @@ VPN, password resets, hardware requests, and IT incidents.
 ---
 
 ## PeopleOperations (HR)
-Leave policy, benefits, and new-hire onboarding.
+Leave policy, benefits, new-hire onboarding, offboarding, and leave filing.
 
 ✅ Ask:
 - "how many annual leave days do I have?"
@@ -109,10 +109,16 @@ Leave policy, benefits, and new-hire onboarding.
 - "onboard Jane Doe as a new hire" (runs a real ~10-minute provisioning
   flow — laptop, desk, benefits, one staged step at a time — not a fake
   instant confirmation)
+- "offboard Jane Doe" (the same real staged flow in reverse — laptop
+  revoked, desk freed, benefits terminated — its own
+  `OFFBOARDING_STEP_DELAY_SECONDS`, independently timed from onboarding)
 - "what's the status of that onboarding?" (a real, honest in-progress
-  answer while it's still running, not just at the end) / "cancel it"
-  (a real mid-flight cancel)
+  answer while it's still running, not just at the end — backed by a real
+  `check_onboarding_status` tool call, not the LLM's own recollection)
+  / "cancel it" (a real mid-flight cancel)
 - "what onboardings have been run?"
+- "file leave for Jane Doe from 2026-09-01 to 2026-09-03 for a family
+  event" (a real leave request, not just a policy recitation)
 
 ❌ Can't:
 - Escalate a case to a human — that skill exists on the agent but needs a
