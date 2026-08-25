@@ -94,11 +94,13 @@ below.
   working, task id: X" reply `summarizeTask` already produces. This is why
   even fast agents now take one extra quick round trip instead of a single
   blocking call — content is unaffected either way.
+  Payroll's payslip-correction review is the same real staged pattern
+  (`PAYROLL_REVIEW_STEP_DELAY_SECONDS`), Java rather than Python.
   Each agent's own step-delay env var
   (`ONBOARDING_STEP_DELAY_SECONDS`, `OFFBOARDING_STEP_DELAY_SECONDS`,
-  `HARDWARE_PROVISIONING_STEP_DELAY_SECONDS`
-  — all default ~200s × 3 steps ≈ 10 min) is read once at that Python
-  process's start. **Setting it in the shell you happen to run `bal test`
+  `HARDWARE_PROVISIONING_STEP_DELAY_SECONDS`, `PAYROLL_REVIEW_STEP_DELAY_SECONDS`
+  — all default ~200s × steps) is read once at that agent process's
+  start. **Setting it in the shell you happen to run `bal test`
   or `curl` from does nothing** — it only takes effect if set in `.env`
   *before* `scripts/start-agents.sh`/`start-all.sh` launches those
   processes. Restart the agents to switch between the real ~10-minute
