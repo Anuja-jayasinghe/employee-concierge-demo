@@ -44,7 +44,7 @@ picks it up — already documented in `agents/travel_expense/README.md` and
 `orchestrator/prepare-docker-build.sh`, but easy to forget (this is exactly
 what happened here). Worth a `scripts/` helper if this keeps recurring.
 
-## Finding 2 (open — needs a decision): the REST content-type fix breaks real interop with the actual `a2a-java` reference server
+## Finding 2 (resolved — see update below): the REST content-type fix breaks real interop with the actual `a2a-java` reference server
 
 Republishing the fixed client (Finding 1) surfaced a real regression:
 `testDelegateToTravelExpense` failed with `"expected a real, non-empty reply
@@ -91,6 +91,14 @@ not a unilateral revert:
 - Make the REST binding negotiate (send `application/a2a+json`, fall back to
   `application/json` on a `415`) — more real-world-robust, more code.
 
+**Update (a2a-ballerina PR #45):** implemented the third option. `RestClient`
+sends `application/a2a+json` by default and transparently retries once with
+`application/json` on a real `415`, then remembers the choice per client
+instance so every later call skips straight to it. Verified against the
+real, live TravelExpense agent: a request that previously failed outright
+now succeeds transparently. 3 new tests in `rest_client_test.bal` exercise
+the negotiation directly. `testDelegateToTravelExpense` now passes.
+
 ## Finding 3 (fixed): orchestrator test suite had a real test-currency gap from PR #35
 
 `testHardwareProvisioningStartsAsBackgroundTask` and
@@ -109,7 +117,7 @@ so the fast path PR #35 introduced has its own real coverage, matching how
 `testParkingReservationTaskCompletes` already covers Parking's fast-settling
 case.
 
-## Finding 4 (known, not a regression): one pre-existing flaky test
+## Finding 4 (mitigated): one pre-existing flaky test
 
 `testParkingReservationTaskCompletes` passed twice, then failed once across
 three runs — not from anything touched this round. Its employee-name
@@ -119,16 +127,18 @@ invent/assume a name) judged that string as "doesn't look like an actual
 person's name" and asked for clarification instead of proceeding. Same
 category of LLM name-plausibility judgment call already documented for
 DigiOps during PR #35's own live testing — inherent non-determinism on a
-synthetic test fixture, not a code defect. Not fixed here (would mean
-auditing every UUID-suffixed test name across the suite, a separate,
-broader cleanup); flagging as a known source of flakiness for whoever
-investigates a red run next.
+synthetic test fixture, not a code defect. **Update (demo PR #40):** replaced all 6 UUID-suffixed employee-name
+fixtures across `agent_tools_test.bal` with a shared
+`uniqueTestEmployeeName()` — a realistic name plus a short unique tag,
+matching the flavor already used in Parking/DigiOps' own
+live-verification fixtures. Reduces, not guarantees away, the odds of this
+specific LLM judgment call; genuine non-determinism on a live model isn't
+fully eliminable by fixture wording alone.
 
 ## Final state
 
-- `a2a-ballerina`: `bal build` clean, `bal test --sticky` 438/438 + 3/3
-  passing. No code changes needed.
+- `a2a-ballerina`: `bal build` clean, `bal test --sticky` 441/441 + 3/3
+  passing (3 new tests added by PR #45's content-type negotiation fix).
 - Orchestrator, all 5 real agents live, real key, real default delays:
-  22 tests, 21 passing, 1 known-flaky (Finding 4). Finding 2 remains open —
-  `testDelegateToTravelExpense` will keep failing against a live
-  TravelExpense agent until Finding 2 is resolved one way or another.
+  23 tests, 23 passing. Both Finding 2 and Finding 4 addressed — see the
+  update notes above.
