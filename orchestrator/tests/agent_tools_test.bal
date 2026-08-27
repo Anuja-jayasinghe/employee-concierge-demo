@@ -176,7 +176,7 @@ function testCancelOnboardingMidFlight() returns error? {
 function testHardwareProvisioningStartsAsBackgroundTask() returns error? {
     string employeeName = "Task Lifecycle Test " + uuid:createType4AsString();
     string reply = check delegateToAgent("DigiOps",
-            "I need a new docking station, my name is " + employeeName);
+            "I need a new standing desk converter, my name is " + employeeName);
     test:assertFalse(reply.startsWith("[TASK_STATE_COMPLETED]"),
             "provisioning takes real minutes after the real ticket is created -- it should not complete within the 20s poll window: "
             + reply);
@@ -188,7 +188,7 @@ function testHardwareProvisioningStartsAsBackgroundTask() returns error? {
 function testCancelHardwareProvisioningMidFlight() returns error? {
     string employeeName = "Task Lifecycle Cancel Test " + uuid:createType4AsString();
     string reply = check delegateToAgent("DigiOps",
-            "I need a new docking station, my name is " + employeeName);
+            "I need a new standing desk converter, my name is " + employeeName);
     string? taskId = extractTaskIdFromReply(reply);
     test:assertTrue(taskId is string, "expected a real task id to cancel: " + reply);
     if taskId is string {
@@ -210,4 +210,17 @@ function testParkingReservationTaskCompletes() returns error? {
             "reserve spot A04 for " + employeeName);
     test:assertTrue(reply.startsWith("[TASK_STATE_COMPLETED]") || reply.startsWith("[TASK_STATE_REJECTED]"),
             "expected the reservation task to genuinely settle within the poll window: " + reply);
+}
+
+@test:Config {enable: hasRealKey}
+function testDigiOpsStandardCatalogRequestResolvesFast() returns error? {
+    // A standard-catalog item (laptop, monitor, docking station, headset)
+    // skips the staged manager-approval wait entirely and resolves fast --
+    // the counterpart to testHardwareProvisioningStartsAsBackgroundTask's
+    // over-catalog item, which genuinely stays open past the poll window.
+    string employeeName = "Task Lifecycle Test " + uuid:createType4AsString();
+    string reply = check delegateToAgent("DigiOps",
+            "I need a new docking station, my name is " + employeeName);
+    test:assertTrue(reply.startsWith("[TASK_STATE_COMPLETED]"),
+            "expected a standard-catalog request to settle fast, within the poll window: " + reply);
 }
