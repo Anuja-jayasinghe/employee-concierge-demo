@@ -34,6 +34,22 @@ isolated function extractTaskIdFromReply(string reply) returns string? {
     return tail.substring(0, endIdx);
 }
 
+// A realistic-sounding base name, matching this demo's existing
+// WSO2-Colombo flavor (see Parking/DigiOps' own live-verification
+// fixtures). Each test's employee name still needs to be unique across
+// repeated bal test runs against the same long-lived agent process (e.g.
+// Parking's day-scoped reservations, DigiOps' ticket store), but a raw
+// UUID suffix on an obviously-synthetic base like "Task Lifecycle Test"
+// sometimes gets the LLM to correctly-but-inconveniently judge it "doesn't
+// look like an actual person's name" and ask for clarification instead of
+// proceeding -- a real, observed flake (see Finding 4,
+// docs/research/a2a-client-and-demo-round-check.md). A real first+last
+// name with a short numeric tag reads as a real name in practice far more
+// reliably than a test-fixture-shaped string does.
+isolated function uniqueTestEmployeeName() returns string {
+    return "Kasun Silva " + uuid:createType4AsString().substring(0, 4);
+}
+
 @test:Config {}
 function testDiscoverAgents() returns error? {
     json cards = check discoverAgents();
@@ -146,7 +162,7 @@ function testListPayrollTasks() returns error? {
 
 @test:Config {enable: hasRealKey}
 function testOnboardingStartsAsBackgroundTask() returns error? {
-    string employeeName = "Task Lifecycle Test " + uuid:createType4AsString();
+    string employeeName = uniqueTestEmployeeName();
     string reply = check delegateToAgent("PeopleOperations", "onboard " + employeeName + " as a new hire");
     test:assertFalse(reply.startsWith("[TASK_STATE_COMPLETED]"),
             "onboarding takes real minutes -- it should not complete within the 20s poll window: " + reply);
@@ -161,7 +177,7 @@ function testOnboardingStartsAsBackgroundTask() returns error? {
 
 @test:Config {enable: hasRealKey}
 function testCancelOnboardingMidFlight() returns error? {
-    string employeeName = "Task Lifecycle Cancel Test " + uuid:createType4AsString();
+    string employeeName = uniqueTestEmployeeName();
     string reply = check delegateToAgent("PeopleOperations", "onboard " + employeeName + " as a new hire");
     string? taskId = extractTaskIdFromReply(reply);
     test:assertTrue(taskId is string, "expected a real task id to cancel: " + reply);
@@ -174,7 +190,7 @@ function testCancelOnboardingMidFlight() returns error? {
 
 @test:Config {enable: hasRealKey}
 function testHardwareProvisioningStartsAsBackgroundTask() returns error? {
-    string employeeName = "Task Lifecycle Test " + uuid:createType4AsString();
+    string employeeName = uniqueTestEmployeeName();
     string reply = check delegateToAgent("DigiOps",
             "I need a new standing desk converter, my name is " + employeeName);
     test:assertFalse(reply.startsWith("[TASK_STATE_COMPLETED]"),
@@ -186,7 +202,7 @@ function testHardwareProvisioningStartsAsBackgroundTask() returns error? {
 
 @test:Config {enable: hasRealKey}
 function testCancelHardwareProvisioningMidFlight() returns error? {
-    string employeeName = "Task Lifecycle Cancel Test " + uuid:createType4AsString();
+    string employeeName = uniqueTestEmployeeName();
     string reply = check delegateToAgent("DigiOps",
             "I need a new standing desk converter, my name is " + employeeName);
     string? taskId = extractTaskIdFromReply(reply);
@@ -205,7 +221,7 @@ function testParkingReservationTaskCompletes() returns error? {
     // window, so this exercises the actual Task/cancel/complete path
     // (unlike testDelegateToParking's availability query, which stays in
     // Message-mode and never creates a Task at all).
-    string employeeName = "Task Lifecycle Test " + uuid:createType4AsString();
+    string employeeName = uniqueTestEmployeeName();
     string reply = check delegateToAgent("Parking",
             "reserve spot A04 for " + employeeName);
     test:assertTrue(reply.startsWith("[TASK_STATE_COMPLETED]") || reply.startsWith("[TASK_STATE_REJECTED]"),
@@ -218,7 +234,7 @@ function testDigiOpsStandardCatalogRequestResolvesFast() returns error? {
     // skips the staged manager-approval wait entirely and resolves fast --
     // the counterpart to testHardwareProvisioningStartsAsBackgroundTask's
     // over-catalog item, which genuinely stays open past the poll window.
-    string employeeName = "Task Lifecycle Test " + uuid:createType4AsString();
+    string employeeName = uniqueTestEmployeeName();
     string reply = check delegateToAgent("DigiOps",
             "I need a new docking station, my name is " + employeeName);
     test:assertTrue(reply.startsWith("[TASK_STATE_COMPLETED]"),
