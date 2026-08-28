@@ -96,7 +96,7 @@ public function main() returns error? {
             taskPushNotificationConfig: {url: WEBHOOK_URL, token: "payroll-check"}
         });
         if r is a2a:Task {
-            runtime:sleep(1);
+            runtime:sleep(5);
             payrollDelivered = check wasDelivered(receiverQuery, r.id);
         }
         io:println("[payroll] attempt ", attempt, ": ", payrollDelivered ? "delivered" : "not yet");
@@ -121,7 +121,7 @@ public function main() returns error? {
             taskPushNotificationConfig: {url: WEBHOOK_URL, token: "travel-check"}
         });
         if r is a2a:Task {
-            runtime:sleep(1);
+            runtime:sleep(5);
             travelDelivered = check wasDelivered(receiverQuery, r.id);
         }
         io:println("[travel_expense] attempt ", attempt, ": ", travelDelivered ? "delivered" : "not yet");
