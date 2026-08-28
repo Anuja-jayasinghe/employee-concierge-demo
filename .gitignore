@@ -17,6 +17,13 @@ build/
 # Ballerina
 .ballerina/
 verification/*/Dependencies.toml
+# demo/*/Dependencies.toml is NOT ignored, same reasoning as
+# orchestrator/Dependencies.toml above: combining ballerina/a2a's gRPC
+# binding with a resolvable-but-incompatible newer ballerina/http hits the
+# same real ABI-coupling issue (ballerina-platform/ballerina-library#2496)
+# on a truly from-scratch dependency resolution — reproduced directly
+# while building demo/concurrent_tasks. Pin and commit it; always build
+# and run demo/ packages with --sticky.
 # orchestrator/Dependencies.toml is NOT ignored: combining ballerina/ai
 # with ballerina/a2a's gRPC binding hits a real upstream grpc/http-native
 # ABI-coupling issue (ballerina-platform/ballerina-library#2496) unless
