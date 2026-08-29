@@ -11,6 +11,7 @@ exercising every operation and transport binding the client supports.
 - [Research](docs/research/) — architectural questions settled with real evidence.
 - [Running the agents](docs/RUNNING_THE_AGENTS.md) — start everything, local or Docker, before testing the client.
 - [Agent cheat sheet](docs/AGENT_CHEAT_SHEET.md) — what each agent can actually do once it's up.
+- [A2A capability coverage](docs/A2A_COVERAGE.md) — what's tested/demoed vs. not, and why, checked against real evidence.
 
 Status: Phases 1–13 complete — all five agents, the orchestrator, the
 push-notification webhook receiver, local and Docker Compose bring-up,
