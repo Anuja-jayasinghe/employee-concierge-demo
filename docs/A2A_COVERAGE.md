@@ -36,16 +36,17 @@ reason either way.
 | `getTaskPushNotificationConfig` | **No** | Not wired — no tool calls it, and there's no config to read back since nothing in chat ever creates one. Terminal instead: `verification/webhook_receiver` |
 | `listTaskPushNotificationConfigs` | **No** | Same reason as above |
 | `deleteTaskPushNotificationConfig` | **No** | Same reason as above |
-| `getExtendedAgentCard` | **No** | Needs a credential (bearer token / gRPC auth header) supplied at client-construction time — no field in a chat message can carry that. Terminal instead: `verification/payroll`, `verification/peopleoperations` |
+| `getExtendedAgentCard` | **Yes** | Wired as the `getAgentExtendedCard` tool, scoped narrowly (its doc comment tells the model to call it only on an explicit extended/admin-card request). The two agents that gate it (Payroll, PeopleOperations) have their real demo credential held server-side by the orchestrator — the orchestrator plays the authenticated caller, not the chat user — so the tool fetches unauthenticated and authenticated in one call and reports the skill-count difference. `DEMO_SCRIPT.md` Act 5 |
 
-**Summary**: 4 of the 11 real methods (`sendMessage`, `getTask`,
-`cancelTask`, `listTasks`) are wired into the chat agent's tools and are
-genuinely BI-chat-demoable today. The other 7 are just as real — every
-one has a passing terminal script — they're just not reachable from that
-specific interface, because nothing in `orchestrator/agent_tools.bal`
-calls them, whether for a framework reason (streaming), an interface
-reason (push notifications, auth), or simply because no tool exposes
-them yet.
+**Summary**: 5 of the 11 real methods (`sendMessage`, `getTask`,
+`cancelTask`, `listTasks`, `getExtendedAgentCard`) are wired into the
+chat agent's tools and are genuinely BI-chat-demoable today. The other 6
+are just as real — every one has a passing terminal script — they're
+just not reachable from that specific interface: 2 (`sendStreamingMessage`,
+`subscribeToTask`) for a framework reason (`ballerina/ai` doesn't support
+streaming yet), 4 (the push-notification-config methods) because nothing
+in `orchestrator/agent_tools.bal` wires them to a tool yet — a real gap
+to close, not a permanent one, unlike streaming.
 
 ## Fully covered — tested and demoed live
 

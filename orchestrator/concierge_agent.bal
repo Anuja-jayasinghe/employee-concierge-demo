@@ -72,13 +72,16 @@ final ai:Agent concierge = check new (
     },
     model = anthropicModel,
     // ai:Agent's own default maxIter is max(tools.length(), 10) -- down to
-    // 5 real generic tools instead of 20 named ones specifically to give
-    // the real, confirmed non-deterministic redundant-tool-call tendency
-    // documented in GitHub issue #24 less room to run; re-verified after
-    // this rewrite (see the issue for the real before/after numbers). Kept
-    // an explicit, tested cap rather than relying on the auto-scaled
+    // 5 real generic delegation tools instead of 20 named ones specifically
+    // to give the real, confirmed non-deterministic redundant-tool-call
+    // tendency documented in GitHub issue #24 less room to run; re-verified
+    // after this rewrite (see the issue for the real before/after numbers).
+    // Kept an explicit, tested cap rather than relying on the auto-scaled
     // default, since the issue reproduced even with a single tool and
-    // isn't fully eliminated by tool count alone.
+    // isn't fully eliminated by tool count alone. getAgentExtendedCard is a
+    // 6th, deliberately narrow tool on top of those 5 -- its own doc
+    // comment scopes it to explicit extended/admin-card requests only, so
+    // it shouldn't add to normal delegation's redundant-call surface.
     maxIter = 10,
-    tools = [discoverAgents, delegateToAgent, cancelAgentTask, getAgentTaskStatus, listAgentTasks]
+    tools = [discoverAgents, delegateToAgent, cancelAgentTask, getAgentTaskStatus, listAgentTasks, getAgentExtendedCard]
 );
