@@ -13,23 +13,43 @@ Companion to [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md), which is the presenter's
 script for everything in the first section below. This document is the
 fuller picture, including the parts that don't make it into a live demo.
 
+## BI chat vs. terminal — since the live demo runs through BI chat
+
+The main demonstration goes through WSO2 Integrator: BI's chat window
+against the orchestrator, not a terminal. That's a real constraint worth
+being explicit about: BI chat can only show what the orchestrator's own
+LLM tool-calling layer actually exposes —
+`orchestrator/agent_tools.bal` calls exactly 4 operations
+(`sendMessage`, `getTask`, `cancelTask`, `listTasks`), confirmed by
+grepping it directly. Everything else in the "fully covered" table below
+is real and demoed, but needs a terminal running one of the
+`verification/`/`demo/` scripts instead — BI chat will never show it, not
+because it doesn't work, but because nothing wires it into that
+particular interface. Each row below says which.
+
 ## Fully covered — tested and demoed live
 
-| Capability | Evidence |
-|---|---|
-| All 11 A2A operations (`sendMessage`, `sendStreamingMessage`, `getTask`, `cancelTask`, `subscribeToTask`, `listTasks`, 4× push-notification-config CRUD, `getExtendedAgentCard`) | `DEMO_SCRIPT.md`'s coverage table, Acts 1–5 |
-| All 3 transport bindings (REST, JSON-RPC, gRPC) | Same — Parking/TravelExpense (REST), DigiOps/PeopleOperations (JSON-RPC), Payroll (gRPC), confirmed live from each real agent card |
-| `TaskState`: `SUBMITTED`, `WORKING`, `COMPLETED`, `CANCELED`, `INPUT_REQUIRED` | `DEMO_SCRIPT.md` Acts 2–3; every agent's staged flow genuinely passes through these |
-| Real long-running task lifecycle (staged work, honest in-progress status, real completion) | `DEMO_SCRIPT.md` Act 2, one example per agent |
-| Mid-flight cancel (real `cancel()` handler stops staged work) | `DEMO_SCRIPT.md` Act 3 |
-| Concurrent, independently-tracked tasks | `DEMO_SCRIPT.md` Act 4, `demo/concurrent_tasks/main.bal` |
-| Streaming (`sendStreamingMessage`) | `DEMO_SCRIPT.md` Act 5, `verification/phase9_smoke_test` |
-| Push-notification config CRUD + real delivery to a real webhook | `DEMO_SCRIPT.md` Act 5, `verification/webhook_receiver` |
-| Extended-card auth gating (2 real mechanisms: gRPC interceptor, bearer token) | `DEMO_SCRIPT.md` Act 5, `verification/payroll`, `verification/peopleoperations` |
-| Connection-drop recovery — real deliberate disconnect + `subscribeToTask` resume, live | `DEMO_SCRIPT.md` Act 6, `verification/digiops` |
-| Automatic reconnect-with-budget mechanism | `DEMO_SCRIPT.md` Act 6, 9 real tests in `a2a-ballerina` |
-| Chaos/error handling (malformed requests, 20x concurrent load, resource-leak sanity) | `DEMO_SCRIPT.md` Act 7, `verification/chaos_test` |
-| A real spec-vs-server interop bug, found and fixed | `DEMO_SCRIPT.md` Act 6, `docs/research/a2a-client-and-demo-round-check.md` |
+| Capability | Via BI chat? | Evidence |
+|---|---|---|
+| `sendMessage` — plain-message FAQ replies | **Yes** | `DEMO_SCRIPT.md` Act 1 — type the question into BI chat |
+| `sendMessage` — task-creating, real long-running lifecycle (staged work, honest in-progress status, real completion) | **Yes** | `DEMO_SCRIPT.md` Act 2 — one example per agent, all through chat |
+| `getTask` — status polling within a chat turn | **Yes** | `DEMO_SCRIPT.md` Act 2 — `sendToAgent` polls `getTask` inside the same turn, bounded ~20s |
+| `cancelTask` — mid-flight cancel | **Yes** | `DEMO_SCRIPT.md` Act 3 — ask to cancel a task you just started |
+| `listTasks` — concurrent, independently-tracked tasks | **Yes** | `DEMO_SCRIPT.md` Act 4 — ask about "all my tasks"; `demo/concurrent_tasks/main.bal` is the fuller, scripted proof of the same real mechanism |
+| All 3 transport bindings (REST, JSON-RPC, gRPC) | **Yes, indirectly** | Chat itself doesn't know about transports, but talking to all 5 real agents through it naturally exercises all 3 — Parking/TravelExpense (REST), DigiOps/PeopleOperations (JSON-RPC), Payroll (gRPC) |
+| `TaskState`: `SUBMITTED`, `WORKING`, `COMPLETED`, `CANCELED`, `INPUT_REQUIRED` | **Yes** | Reached naturally by the chat-driven rows above |
+| `sendStreamingMessage`/`subscribeToTask` (streaming) | **No** | `ballerina/ai` (what the orchestrator's chat agent runs on) doesn't support streaming yet — real framework limitation, not a choice. Terminal instead: `verification/phase9_smoke_test`, `verification/digiops` |
+| Push-notification config CRUD + real delivery to a real webhook | **No** | Needs a persistent channel to push a notification into; BI chat is one stateless HTTP request per turn with nothing open in between. Terminal instead: `verification/webhook_receiver` |
+| Extended-card auth gating (2 real mechanisms: gRPC interceptor, bearer token) | **No** | Needs a credential (bearer token / gRPC auth header) supplied at client-construction time — no field in a chat message can carry that. Terminal instead: `verification/payroll`, `verification/peopleoperations` |
+| Connection-drop recovery — real deliberate disconnect + `subscribeToTask` resume, live | **No** | Needs direct control over the actual stream object to close it mid-flight; a chat message can't reach into that. Terminal instead: `verification/digiops` |
+| Automatic reconnect-with-budget mechanism | **No** | Same reason — also only exercised against `a2a-ballerina`'s own mock server, not a live chat agent. Terminal instead: 9 real tests in `a2a-ballerina` |
+| Chaos/error handling (malformed requests, 20x concurrent load, resource-leak sanity) | **No** | An LLM building a tool call always produces a well-formed message — there's no way to ask it in English for malformed bytes, and "20 at once" needs real concurrent code, not one message at a time. Terminal instead: `verification/chaos_test` |
+| A real spec-vs-server interop bug, found and fixed (content-type negotiation) | **Invisible either way** | Not something you *see* in chat or a script — it's inside every real REST call TravelExpense's Act 2 chat exchanges already make; the fix just means those calls keep working. Story: `docs/research/a2a-client-and-demo-round-check.md` |
+
+**Summary**: 6 of the rows above (everything through `listTasks`) are real,
+live, BI-chat-demoable today. The other 7 are just as real, just not
+reachable from that specific interface — each has its own terminal
+command in `DEMO_SCRIPT.md` Acts 5–7.
 
 ## Real capability, reachable in this demo, but not featured in the live script
 
