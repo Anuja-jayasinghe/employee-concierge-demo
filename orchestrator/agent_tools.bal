@@ -20,6 +20,13 @@ import ballerina/uuid;
 type KnownAgent record {|
     string name;
     string url;
+    // Only set for agents that genuinely gate their extended AgentCard
+    // behind a real credential (Payroll's gRPC interceptor, PeopleOperations'
+    // bearer-token check) -- () for the other three, which declare no
+    // extended-card auth at all. Same demo constants already used by
+    // verification/payroll/main.bal and verification/peopleoperations/main.bal,
+    // just held server-side here instead of typed into a chat message.
+    map<string> & readonly extendedCardHeaders?;
 |};
 
 // Local-process defaults (127.0.0.1); each is overridable via its own env
@@ -29,8 +36,16 @@ type KnownAgent record {|
 final KnownAgent[] & readonly knownAgents = [
     {name: "Parking", url: os:getEnv("PARKING_URL") != "" ? os:getEnv("PARKING_URL") : "http://127.0.0.1:8000"},
     {name: "DigiOps", url: os:getEnv("DIGIOPS_URL") != "" ? os:getEnv("DIGIOPS_URL") : "http://127.0.0.1:8001"},
-    {name: "PeopleOperations", url: os:getEnv("PEOPLEOPS_URL") != "" ? os:getEnv("PEOPLEOPS_URL") : "http://127.0.0.1:8002"},
-    {name: "Payroll", url: os:getEnv("PAYROLL_URL") != "" ? os:getEnv("PAYROLL_URL") : "http://127.0.0.1:8003"},
+    {
+        name: "PeopleOperations",
+        url: os:getEnv("PEOPLEOPS_URL") != "" ? os:getEnv("PEOPLEOPS_URL") : "http://127.0.0.1:8002",
+        extendedCardHeaders: {"Authorization": "Bearer demo-staff-secret"}
+    },
+    {
+        name: "Payroll",
+        url: os:getEnv("PAYROLL_URL") != "" ? os:getEnv("PAYROLL_URL") : "http://127.0.0.1:8003",
+        extendedCardHeaders: {"Authorization": "Bearer demo-payroll-admin-secret"}
+    },
     {name: "TravelExpense", url: os:getEnv("TRAVEL_EXPENSE_URL") != "" ? os:getEnv("TRAVEL_EXPENSE_URL") : "http://127.0.0.1:8004"}
 ];
 
@@ -175,6 +190,40 @@ isolated function listTasksOn(a2a:Client agentClient) returns string|error {
     return summarizeTasks(result.tasks);
 }
 
+isolated function skillIdsOf(a2a:AgentCard card) returns string {
+    if card.skills.length() == 0 {
+        return "none";
+    }
+    return string:'join(", ", ...card.skills.map(s => s.id));
+}
+
+// Proves extended-card auth gating in one call instead of two: fetches the
+// card once with no credential and, only when this agent genuinely declares
+// one (Payroll, PeopleOperations), once more with its real demo credential,
+// then reports the skill-count difference -- the same comparison
+// verification/payroll and verification/peopleoperations already make from
+// a terminal, just reachable from chat now too.
+isolated function extendedCardComparison(string agentName) returns string|error {
+    KnownAgent known = check findKnownAgent(agentName);
+    a2a:Client plainClient = check getAgentClient(agentName);
+    a2a:AgentCard|error unauthCard = plainClient->getExtendedAgentCard();
+
+    map<string>? authHeaders = known.extendedCardHeaders;
+    if authHeaders is () {
+        if unauthCard is error {
+            return string `${agentName} does not declare extended-card auth gating, and its extended card fetch failed anyway: ${unauthCard.message()}`;
+        }
+        return string `${agentName} declares no extended-card auth gating -- its public card already has ${unauthCard.skills.length()} skill(s): ${skillIdsOf(unauthCard)}`;
+    }
+
+    a2a:Client authedClient = check new (known.url, headers = authHeaders);
+    a2a:AgentCard authedCard = check authedClient->getExtendedAgentCard();
+    string unauthDesc = unauthCard is error
+        ? string `rejected outright (${unauthCard.message()})`
+        : string `${unauthCard.skills.length()} skill(s): ${skillIdsOf(unauthCard)}`;
+    return string `${agentName} extended-card auth gating is real -- unauthenticated: ${unauthDesc}; authenticated: ${authedCard.skills.length()} skill(s): ${skillIdsOf(authedCard)}`;
+}
+
 # Fetches the real Agent Card (name, description, skills) for every known
 # WSO2 agent, so you can see what each one actually does and pick the
 # right one to delegate to. Call this once near the start of a
@@ -246,4 +295,19 @@ isolated function getAgentTaskStatus(string agentName, string taskId) returns st
 isolated function listAgentTasks(string agentName) returns string|error {
     a2a:Client agentClient = check getAgentClient(agentName);
     return listTasksOn(agentClient);
+}
+
+# Checks whether a specific known agent's *extended* AgentCard (its full,
+# possibly admin/staff-only skill list) differs from its public one. Use
+# this only when explicitly asked to inspect an agent's extended/admin card
+# or to verify its auth gating -- never as part of normal task delegation,
+# and never before a normal request to that agent.
+#
+# + agentName - the agent's exact name
+# + return - a comparison of the unauthenticated vs. authenticated card, or
+# an error if neither fetch succeeded
+@ai:AgentTool
+@display {label: "", iconPath: ""}
+isolated function getAgentExtendedCard(string agentName) returns string|error {
+    return extendedCardComparison(agentName);
 }
