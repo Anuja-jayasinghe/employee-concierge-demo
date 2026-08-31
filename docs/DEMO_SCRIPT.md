@@ -292,6 +292,14 @@ works" into "notifications actually work."
 
 Run live: `verification/payroll/main.bal`, `verification/peopleoperations/main.bal`.
 
+**Also reachable from BI chat**: ask "check Payroll's extended agent
+card" or "does PeopleOperations' admin card have any extra skills?". The
+`getAgentExtendedCard` tool holds each agent's real demo credential
+server-side (the orchestrator plays the authenticated caller, not the
+chat user) and fetches the card both without and with it in one call,
+reporting the skill-count difference directly in the reply — the same
+proof as the scripts above, one chat message instead of a terminal run.
+
 ---
 
 ## Act 6 — Resilience: connection drop and real recovery
