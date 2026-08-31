@@ -13,6 +13,40 @@ Companion to [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md), which is the presenter's
 script for everything in the first section below. This document is the
 fuller picture, including the parts that don't make it into a live demo.
 
+## BI chat vs. terminal — per A2A method
+
+The main demonstration goes through WSO2 Integrator: BI's chat window
+against the orchestrator, not a terminal. BI chat can only show what the
+orchestrator's own LLM tool-calling layer actually calls into — every
+method below is a real `remote function` on the `a2a-ballerina` client
+(`ballerina/client.bal:669-815`); the "Via BI chat?" column says whether
+`orchestrator/agent_tools.bal` actually wires it into a tool the chat
+agent can invoke, confirmed by grepping that file directly, plus a short
+reason either way.
+
+| Method | Via BI chat? | Why |
+|---|---|---|
+| `sendMessage` | **Yes** | Wired into `delegateToAgent`/`sendToAgent` in `agent_tools.bal` — every chat request that reaches an agent goes through this. `DEMO_SCRIPT.md` Acts 1–2 |
+| `getTask` | **Yes** | `sendToAgent` polls it internally after every `sendMessage`, and `getAgentTaskStatus` exposes it directly as a tool. `DEMO_SCRIPT.md` Act 2 |
+| `cancelTask` | **Yes** | Wired as the `cancelAgentTask` tool — ask to cancel a task you just started. `DEMO_SCRIPT.md` Act 3 |
+| `listTasks` | **Yes** | Wired as the `listAgentTasks` tool — ask about "all my tasks". `DEMO_SCRIPT.md` Act 4, `demo/concurrent_tasks/main.bal` for the fuller scripted proof |
+| `sendStreamingMessage` | **No** | `ballerina/ai` (what the chat agent runs on) doesn't support streaming yet — a real framework limitation, not a missing tool. Terminal instead: `verification/phase9_smoke_test` |
+| `subscribeToTask` | **No** | Same root cause — nothing in `agent_tools.bal` calls it, and even if it did, `ballerina/ai` has nowhere to stream the result to. Also the mechanism behind connection-drop recovery, which needs direct control over the stream object a chat message can't reach. Terminal instead: `verification/digiops` |
+| `createTaskPushNotificationConfig` | **No** | Needs a persistent webhook URL supplied out-of-band; BI chat is one stateless HTTP request per turn with no field for that. Terminal instead: `verification/webhook_receiver` |
+| `getTaskPushNotificationConfig` | **No** | Not wired — no tool calls it, and there's no config to read back since nothing in chat ever creates one. Terminal instead: `verification/webhook_receiver` |
+| `listTaskPushNotificationConfigs` | **No** | Same reason as above |
+| `deleteTaskPushNotificationConfig` | **No** | Same reason as above |
+| `getExtendedAgentCard` | **No** | Needs a credential (bearer token / gRPC auth header) supplied at client-construction time — no field in a chat message can carry that. Terminal instead: `verification/payroll`, `verification/peopleoperations` |
+
+**Summary**: 4 of the 11 real methods (`sendMessage`, `getTask`,
+`cancelTask`, `listTasks`) are wired into the chat agent's tools and are
+genuinely BI-chat-demoable today. The other 7 are just as real — every
+one has a passing terminal script — they're just not reachable from that
+specific interface, because nothing in `orchestrator/agent_tools.bal`
+calls them, whether for a framework reason (streaming), an interface
+reason (push notifications, auth), or simply because no tool exposes
+them yet.
+
 ## Fully covered — tested and demoed live
 
 | Capability | Evidence |
