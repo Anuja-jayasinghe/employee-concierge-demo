@@ -6,6 +6,7 @@ services:
     environment:
       A2A_BIND_HOST: "0.0.0.0"
       A2A_ADVERTISED_HOST: "parking"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/.well-known/agent-card.json')"]
       interval: 3s
