@@ -4,3 +4,10 @@ tests
 Dockerfile
 .dockerignore
 docker-compose.yml
+# WSO2 Integrator: BI writes this locally when the project is opened
+# there, wiring an ai:Wso2ModelProvider this Docker deployment never
+# configures (it uses ANTHROPIC_API_KEY directly instead) -- if present,
+# it crashes the container on startup ("ballerina.ai.wso2ProviderConfig
+# is not configured correctly"). Untracked, machine-local, never meant
+# to ship.
+connections.bal
